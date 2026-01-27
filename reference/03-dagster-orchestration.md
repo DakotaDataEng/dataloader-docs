@@ -1,13 +1,13 @@
 # Dagster Orchestration
 
-Dagster Cloud orchestrates the DataLoader system through sensors and assets.
+Dagster orchestrates the DataLoader system through sensors and assets.
 
 ---
 
 ## Architecture
 
 ```
-Dagster Cloud
+Dagster
 ├── Sensors (5) ────── Continuously poll Lakebase for work
 │   ├── master_sensor
 │   ├── longqueued_monitor

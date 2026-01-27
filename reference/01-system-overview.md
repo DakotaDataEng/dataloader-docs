@@ -6,7 +6,7 @@ DataLoader is a production data orchestration system that loads data from source
 
 - **Multi-database connectivity**: SQL Server, Oracle, PostgreSQL, Snowflake, ClickHouse
 - **Flexible load strategies**: Full, incremental, append-only, rolling window, and chunked backfill
-- **Automated orchestration**: Sensor-based scheduling via Dagster Cloud
+- **Automated orchestration**: Sensor-based scheduling via Dagster
 - **Fault tolerance**: Automatic retry analysis and timeout monitoring
 - **Execution tracking**: Complete audit trail of all data loads
 
@@ -61,9 +61,9 @@ PostgreSQL database storing all configuration and state.
 - Production: `dataloader` database
 - Pre-production: `dataloader_test` database
 
-### 2. Dagster Cloud (Orchestration)
+### 2. Dagster (Orchestration)
 
-Cloud-hosted Dagster deployment with sensors and assets.
+Dagster deployment with sensors and assets.
 
 **Sensors** (5 total):
 | Sensor | Interval | Purpose |

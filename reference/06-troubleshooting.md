@@ -31,7 +31,7 @@ LIMIT 10;
 
 | System | Location |
 |--------|----------|
-| Dagster | Dagster Cloud UI → Runs → Select run → Logs |
+| Dagster | Dagster UI → Runs → Select run → Logs |
 | Databricks | Databricks Workspace → Jobs → Select job → Runs |
 | Lakebase | `historical_metadata.log_message` |
 
@@ -48,7 +48,7 @@ LIMIT 10;
 **Causes**:
 1. `master_sensor` not running
 2. Table filtered out by sensor query
-3. Dagster Cloud issue
+3. Dagster issue
 
 **Diagnosis**:
 ```sql
@@ -73,8 +73,8 @@ WHERE is_active = true
 **Solutions**:
 1. Verify `is_active = true`
 2. Check `next_load_date_time` is in the past
-3. Verify sensor is running in Dagster Cloud
-4. Check Dagster Cloud for deployment issues
+3. Verify sensor is running in Dagster
+4. Check Dagster for deployment issues
 
 ---
 
@@ -285,7 +285,7 @@ WHERE last_status = 'Failed';
        retry_count = 0
    WHERE source_table_name = 'your_table';
    ```
-2. Check `failed_monitor` in Dagster Cloud
+2. Check `failed_monitor` in Dagster
 3. Review AI analysis in error message prefix
 
 ---

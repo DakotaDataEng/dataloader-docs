@@ -57,7 +57,7 @@ PostgreSQL database storing configuration and execution state.
 - **Tables**: `table_control`, `table_control_dbconfig`, `historical_metadata`, `table_control_history`
 - **Environments**: `dataloader` (prod), `dataloader_test` (pre-prod)
 
-### 2. Dagster Cloud Orchestration
+### 2. Dagster Orchestration
 Sensor-based scheduling and job management.
 - **5 Sensors**: master (triggers), longqueued monitor, longrunning monitor, failed monitor, landing table monitor
 - **2 Assets**: `dataloader_table_load`, `dataloader_retry_analysis`

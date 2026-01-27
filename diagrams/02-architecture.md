@@ -99,27 +99,32 @@ flowchart TB
 Shows how data and control signals flow through the system.
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Config["Configuration"]
         SQL["SQL / dl-app UI"]
     end
 
     subgraph Control["Control Plane"]
-        TC["table_control"]
         TCDB["dbconfig"]
+        TC["table_control"]
+        HM["historical_metadata"]
+        TCDB -->|Connection config| TC
     end
 
     subgraph Orchestration["Orchestration"]
-        Sensor["master_sensor<br/>(every 60s)"]
+        Sensor["master_sensor (every 60s)"]
         Asset["dataloader_table_load"]
+        Sensor -->|RunRequest| Asset
     end
 
     subgraph Execution["Execution"]
         Pipes["Dagster Pipes"]
         DL["DataLoader"]
+        Pipes -->|Execute| DL
     end
 
     subgraph Sources["Source DBs"]
+        direction LR
         MSSQL["SQL Server"]
         Oracle["Oracle"]
         PG["PostgreSQL"]
@@ -128,24 +133,14 @@ flowchart LR
     end
 
     subgraph Destination["Destination"]
-        UC["Unity Catalog<br/>(Bronze)"]
-    end
-
-    subgraph Tracking["Tracking"]
-        HM["historical_metadata"]
+        UC["Unity Catalog (Bronze)"]
     end
 
     SQL -->|INSERT/UPDATE| TC
-    TCDB -->|Connection config| TC
-
     TC -->|Ready tables| Sensor
-    Sensor -->|RunRequest| Asset
     Asset -->|Submit job| Pipes
-    Pipes -->|Execute| DL
-
-    MSSQL & Oracle & PG & SF & CH -->|JDBC/Native| DL
+    Sources -->|JDBC/Native| DL
     DL -->|Write| UC
-
     DL -.->|rows, status| HM
     DL -.->|incremental_value| TC
 

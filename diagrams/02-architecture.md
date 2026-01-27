@@ -125,11 +125,7 @@ flowchart TB
 
     subgraph Sources["Source DBs"]
         direction LR
-        MSSQL["SQL Server"]
-        Oracle["Oracle"]
-        PG["PostgreSQL"]
-        SF["Snowflake"]
-        CH["ClickHouse"]
+        MSSQL["SQL Server"] ~~~ Oracle["Oracle"] ~~~ PG["PostgreSQL"] ~~~ SF["Snowflake"] ~~~ CH["ClickHouse"]
     end
 
     subgraph Destination["Destination"]

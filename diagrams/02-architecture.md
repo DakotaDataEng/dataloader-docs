@@ -18,7 +18,7 @@ flowchart TB
 
     subgraph DataLoader["DataLoader System"]
         Lakebase["Lakebase<br/>Control Database"]
-        Dagster["Dagster Cloud<br/>Orchestration"]
+        Dagster["Dagster<br/>Orchestration"]
         Databricks["Databricks<br/>Execution"]
     end
 
@@ -54,7 +54,7 @@ flowchart TB
         TC --> TCH
     end
 
-    subgraph Dagster["Dagster Cloud"]
+    subgraph Dagster["Dagster"]
         subgraph Sensors["Sensors"]
             MS["master_sensor<br/>(60s interval)"]
             LQM["longqueued_monitor<br/>(10min, 60min threshold)"]

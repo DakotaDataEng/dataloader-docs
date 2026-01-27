@@ -47,6 +47,7 @@ ClickHouse    ─┘
 | [04-dataloader-class.md](reference/04-dataloader-class.md) | DataLoader class: methods, database support, threading |
 | [05-load-strategies.md](reference/05-load-strategies.md) | 6 strategies: full, incremental, append_only, rolling, check_and_load, chunked_backfill |
 | [06-troubleshooting.md](reference/06-troubleshooting.md) | Common issues, debugging steps, query recipes |
+| [07-control-manager-ui.md](reference/07-control-manager-ui.md) | dl-app web UI: dashboard, bulk edit, promotion workflow |
 
 ---
 
@@ -74,9 +75,10 @@ Dagster Pipes integration for remote Spark execution.
 
 ---
 
-## Optional: dl-app Control Manager
-
-A Flask web UI (`dl-app/`) provides a GUI for managing control tables. See `dl-app/README.md` for details.
+### 5. Control Manager UI (dl-app)
+Flask web UI for managing control tables (development tool).
+- **Features**: Dashboard, bulk edit, promotion workflow, history tracking
+- **Documentation**: [Control Manager UI Guide](reference/07-control-manager-ui.md)
 
 ---
 
@@ -86,3 +88,4 @@ A Flask web UI (`dl-app/`) provides a GUI for managing control tables. See `dl-a
 - **Debug failed load**: See [Troubleshooting](reference/06-troubleshooting.md)
 - **Understand sensors**: See [Dagster Orchestration](reference/03-dagster-orchestration.md)
 - **Database connection strings**: See [DataLoader Class](reference/04-dataloader-class.md)
+- **Use the web UI**: See [Control Manager UI](reference/07-control-manager-ui.md)

@@ -1,0 +1,395 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 750">
+  <defs>
+    <!-- Enhanced Gradients with depth -->
+    <linearGradient id="sourceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="lakebaseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#065f46;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#047857;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="dagsterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="databricksGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#dc2626;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="unityGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891b2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Background gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="40%">
+      <stop offset="0%" style="stop-color:#fafafa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Subtle noise pattern for texture -->
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="0" />
+      <feColorMatrix type="saturate" values="0" />
+      <feBlend in="SourceGraphic" mode="multiply" />
+    </filter>
+    
+    <!-- Soft shadow -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.15"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Glow effect for arrows -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Arrow markers for diagram - fixed 12px size, refX=0 so arrow extends forward from line end -->
+    <marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L0,12 L12,6 z" fill="#10b981"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L0,12 L12,6 z" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L0,12 L12,6 z" fill="#a855f7"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L0,12 L12,6 z" fill="#f59e0b"/>
+    </marker>
+    <!-- Smaller markers for legend - refX=0 so line connects to back of arrow -->
+    <marker id="arrowGreenSm" markerWidth="8" markerHeight="8" refX="0" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#10b981"/>
+    </marker>
+    <marker id="arrowBlueSm" markerWidth="8" markerHeight="8" refX="0" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrowPurpleSm" markerWidth="8" markerHeight="8" refX="0" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#a855f7"/>
+    </marker>
+    <marker id="arrowOrangeSm" markerWidth="8" markerHeight="8" refX="0" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+
+  <!-- Background with gradient -->
+  <rect width="1300" height="750" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle grid pattern overlay -->
+  <g opacity="0.03">
+    <path d="M0,0 L0,750 M100,0 L100,750 M200,0 L200,750 M300,0 L300,750 M400,0 L400,750 M500,0 L500,750 M600,0 L600,750 M700,0 L700,750 M800,0 L800,750 M900,0 L900,750 M1000,0 L1000,750 M1100,0 L1100,750 M1200,0 L1200,750 M1300,0 L1300,750" stroke="#1e293b" stroke-width="0.5"/>
+    <path d="M0,0 L1300,0 M0,100 L1300,100 M0,200 L1300,200 M0,300 L1300,300 M0,400 L1300,400 M0,500 L1300,500 M0,600 L1300,600 M0,700 L1300,700" stroke="#1e293b" stroke-width="0.5"/>
+  </g>
+
+  <!-- Title with better typography -->
+  <g>
+    <text x="650" y="48" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="34" font-weight="700" fill="#0f172a" letter-spacing="-0.5">
+      DataLoader System Architecture
+    </text>
+    <line x1="450" y1="62" x2="850" y2="62" stroke="#e2e8f0" stroke-width="2" opacity="0.5"/>
+  </g>
+
+  <!-- Legend with refined styling -->
+  <g transform="translate(50, 680)">
+    <rect x="0" y="0" width="210" height="55" fill="white" rx="8" stroke="#e2e8f0" stroke-width="1.5" filter="url(#shadow)"/>
+    <line x1="15" y1="18" x2="55" y2="18" stroke="#10b981" stroke-width="2" marker-end="url(#arrowGreenSm)"/>
+    <text x="68" y="22" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">Data Flow</text>
+    <line x1="15" y1="38" x2="55" y2="38" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrowBlueSm)"/>
+    <text x="68" y="42" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">Control Flow</text>
+  </g>
+  <g transform="translate(270, 680)">
+    <rect x="0" y="0" width="210" height="55" fill="white" rx="8" stroke="#e2e8f0" stroke-width="1.5" filter="url(#shadow)"/>
+    <line x1="15" y1="18" x2="55" y2="18" stroke="#a855f7" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrowPurpleSm)"/>
+    <text x="68" y="22" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">Status Updates</text>
+    <line x1="15" y1="38" x2="55" y2="38" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrowOrangeSm)"/>
+    <text x="68" y="42" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" font-weight="500" fill="#334155">Structured Logs</text>
+  </g>
+
+  <!-- SOURCE DATABASES (Left) -->
+  <g transform="translate(50, 120)" filter="url(#shadow)">
+    <rect x="0" y="0" width="180" height="380" fill="url(#sourceGrad)" rx="14"/>
+    <rect x="0" y="0" width="180" height="380" fill="white" rx="14" opacity="0.03"/>
+    
+    <text x="90" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="18" font-weight="700" fill="white" letter-spacing="-0.3">
+      Source Databases
+    </text>
+    <rect x="20" y="48" width="140" height="1" fill="white" opacity="0.3"/>
+
+    <!-- Database cards -->
+    <g transform="translate(25, 68)">
+      <rect x="0" y="0" width="130" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="130" height="3" fill="#1e3a8a" rx="8" opacity="0.8"/>
+      <text x="65" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="13" font-weight="600" fill="#0f172a">SQL Server</text>
+      <text x="65" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">MSSQL / Azure SQL</text>
+    </g>
+    <g transform="translate(25, 125)">
+      <rect x="0" y="0" width="130" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="130" height="3" fill="#1e3a8a" rx="8" opacity="0.8"/>
+      <text x="65" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="13" font-weight="600" fill="#0f172a">Oracle</text>
+      <text x="65" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">JDBC thin client</text>
+    </g>
+    <g transform="translate(25, 182)">
+      <rect x="0" y="0" width="130" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="130" height="3" fill="#1e3a8a" rx="8" opacity="0.8"/>
+      <text x="65" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="13" font-weight="600" fill="#0f172a">PostgreSQL</text>
+      <text x="65" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">JDBC driver</text>
+    </g>
+    <g transform="translate(25, 239)">
+      <rect x="0" y="0" width="130" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="130" height="3" fill="#1e3a8a" rx="8" opacity="0.8"/>
+      <text x="65" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="13" font-weight="600" fill="#0f172a">Snowflake</text>
+      <text x="65" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">Native connector</text>
+    </g>
+    <g transform="translate(25, 296)">
+      <rect x="0" y="0" width="130" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="130" height="3" fill="#1e3a8a" rx="8" opacity="0.8"/>
+      <text x="65" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="13" font-weight="600" fill="#0f172a">ClickHouse</text>
+      <text x="65" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">HTTP JDBC</text>
+    </g>
+
+    <text x="90" y="367" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" fill="white" opacity="0.7" font-style="italic">
+      Production Data Sources
+    </text>
+  </g>
+
+  <!-- LAKEBASE (Center-Left) -->
+  <g transform="translate(280, 180)" filter="url(#shadow)">
+    <rect x="0" y="0" width="180" height="280" fill="url(#lakebaseGrad)" rx="14"/>
+    <rect x="0" y="0" width="180" height="280" fill="white" rx="14" opacity="0.03"/>
+    
+    <text x="90" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="18" font-weight="700" fill="white" letter-spacing="-0.3">
+      Lakebase
+    </text>
+    <text x="90" y="56" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="12" fill="white" opacity="0.8">
+      Control Database
+    </text>
+    <rect x="20" y="63" width="140" height="1" fill="white" opacity="0.3"/>
+
+    <g transform="translate(15, 80)">
+      <rect x="0" y="0" width="150" height="36" fill="white" rx="6" opacity="0.95"/>
+      <text x="75" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="500" fill="#0f172a">table_control</text>
+    </g>
+    <g transform="translate(15, 122)">
+      <rect x="0" y="0" width="150" height="36" fill="white" rx="6" opacity="0.95"/>
+      <text x="75" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="500" fill="#0f172a">table_control_dbconfig</text>
+    </g>
+    <g transform="translate(15, 164)">
+      <rect x="0" y="0" width="150" height="36" fill="white" rx="6" opacity="0.95"/>
+      <text x="75" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="500" fill="#0f172a">historical_metadata</text>
+    </g>
+    <g transform="translate(15, 206)">
+      <rect x="0" y="0" width="150" height="36" fill="white" rx="6" opacity="0.95"/>
+      <text x="75" y="23" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="500" fill="#0f172a">table_control_history</text>
+    </g>
+  </g>
+
+  <!-- DAGSTER (Center) -->
+  <g transform="translate(560, 130)" filter="url(#shadow)">
+    <rect x="0" y="0" width="180" height="390" fill="url(#dagsterGrad)" rx="14"/>
+    <rect x="0" y="0" width="180" height="390" fill="white" rx="14" opacity="0.03"/>
+
+    <text x="90" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="18" font-weight="700" fill="white" letter-spacing="-0.3">
+      Dagster
+    </text>
+    <text x="90" y="56" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="12" fill="white" opacity="0.8">
+      Orchestration
+    </text>
+    <rect x="20" y="63" width="140" height="1" fill="white" opacity="0.3"/>
+
+    <!-- Sensors Section -->
+    <text x="90" y="88" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="13" font-weight="600" fill="white" opacity="0.9">
+      Sensors
+    </text>
+    <g transform="translate(15, 98)">
+      <rect x="0" y="0" width="150" height="30" fill="white" rx="6" opacity="0.95"/>
+      <circle cx="12" cy="15" r="3" fill="#7c3aed"/>
+      <text x="20" y="20" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="500" fill="#0f172a">master_sensor (60s)</text>
+    </g>
+    <g transform="translate(15, 133)">
+      <rect x="0" y="0" width="150" height="30" fill="white" rx="6" opacity="0.9"/>
+      <circle cx="12" cy="15" r="3" fill="#7c3aed"/>
+      <text x="20" y="20" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="500" fill="#0f172a">longqueued_monitor</text>
+    </g>
+    <g transform="translate(15, 168)">
+      <rect x="0" y="0" width="150" height="30" fill="white" rx="6" opacity="0.9"/>
+      <circle cx="12" cy="15" r="3" fill="#7c3aed"/>
+      <text x="20" y="20" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="500" fill="#0f172a">longrunning_monitor</text>
+    </g>
+    <g transform="translate(15, 203)">
+      <rect x="0" y="0" width="150" height="30" fill="white" rx="6" opacity="0.9"/>
+      <circle cx="12" cy="15" r="3" fill="#7c3aed"/>
+      <text x="20" y="20" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="500" fill="#0f172a">failed_monitor</text>
+    </g>
+    <g transform="translate(15, 238)">
+      <rect x="0" y="0" width="150" height="30" fill="white" rx="6" opacity="0.9"/>
+      <circle cx="12" cy="15" r="3" fill="#7c3aed"/>
+      <text x="20" y="20" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="500" fill="#0f172a">landing_table_monitor</text>
+    </g>
+
+    <!-- Assets Section -->
+    <line x1="15" y1="280" x2="165" y2="280" stroke="white" stroke-width="1" opacity="0.3"/>
+    <text x="90" y="298" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="13" font-weight="600" fill="white" opacity="0.9">
+      Assets
+    </text>
+    <g transform="translate(15, 307)">
+      <rect x="0" y="0" width="150" height="30" fill="white" rx="6" opacity="0.95"/>
+      <circle cx="12" cy="15" r="3" fill="#7c3aed"/>
+      <text x="20" y="20" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="500" fill="#0f172a">dataloader_table_load</text>
+    </g>
+    <g transform="translate(15, 342)">
+      <rect x="0" y="0" width="150" height="30" fill="white" rx="6" opacity="0.9"/>
+      <circle cx="12" cy="15" r="3" fill="#7c3aed"/>
+      <text x="20" y="20" font-family="'IBM Plex Mono', monospace" font-size="9.5" font-weight="500" fill="#0f172a">dataloader_retry_analysis</text>
+    </g>
+  </g>
+
+  <!-- DATABRICKS (Center-Right) -->
+  <g transform="translate(840, 160)" filter="url(#shadow)">
+    <rect x="0" y="0" width="180" height="320" fill="url(#databricksGrad)" rx="14"/>
+    <rect x="0" y="0" width="180" height="320" fill="white" rx="14" opacity="0.03"/>
+
+    <text x="90" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="18" font-weight="700" fill="white" letter-spacing="-0.3">
+      Databricks
+    </text>
+    <text x="90" y="56" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="12" fill="white" opacity="0.8">
+      Execution Engine
+    </text>
+    <rect x="20" y="63" width="140" height="1" fill="white" opacity="0.3"/>
+
+    <g transform="translate(15, 78)">
+      <rect x="0" y="0" width="150" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="150" height="3" fill="#dc2626" rx="8" opacity="0.8"/>
+      <text x="75" y="21" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#0f172a">DataLoader Class</text>
+      <text x="75" y="37" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">Spark JDBC / Native</text>
+    </g>
+    <g transform="translate(15, 134)">
+      <rect x="0" y="0" width="150" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="150" height="3" fill="#dc2626" rx="8" opacity="0.8"/>
+      <text x="75" y="21" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#0f172a">Dagster Pipes</text>
+      <text x="75" y="37" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">Bi-directional comms</text>
+    </g>
+    <g transform="translate(15, 190)">
+      <rect x="0" y="0" width="150" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="150" height="3" fill="#dc2626" rx="8" opacity="0.8"/>
+      <text x="75" y="21" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="600" fill="#0f172a">Structured Logging</text>
+      <text x="75" y="37" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">JSON to ADLS</text>
+    </g>
+    <g transform="translate(15, 246)">
+      <rect x="0" y="0" width="150" height="48" fill="white" rx="8" opacity="0.95"/>
+      <rect x="0" y="0" width="150" height="3" fill="#dc2626" rx="8" opacity="0.8"/>
+      <text x="75" y="21" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#0f172a">Azure Key Vault</text>
+      <text x="75" y="37" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" fill="#64748b">Secrets management</text>
+    </g>
+  </g>
+
+  <!-- UNITY CATALOG (Right) -->
+  <g transform="translate(1110, 160)" filter="url(#shadow)">
+    <rect x="0" y="0" width="160" height="320" fill="url(#unityGrad)" rx="14"/>
+    <rect x="0" y="0" width="160" height="320" fill="white" rx="14" opacity="0.03"/>
+
+    <text x="80" y="38" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="18" font-weight="700" fill="white" letter-spacing="-0.3">
+      Unity Catalog
+    </text>
+    <text x="80" y="56" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="12" fill="white" opacity="0.8">
+      Destination
+    </text>
+    <rect x="15" y="63" width="130" height="1" fill="white" opacity="0.3"/>
+
+    <g transform="translate(15, 80)">
+      <rect x="0" y="0" width="130" height="38" fill="white" rx="7" opacity="0.95"/>
+      <rect x="0" y="0" width="130" height="3" fill="#0891b2" rx="7" opacity="0.8"/>
+      <text x="65" y="26" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#0f172a">Bronze Layer</text>
+    </g>
+    <g transform="translate(15, 127)">
+      <rect x="0" y="0" width="130" height="38" fill="white" rx="7" opacity="0.95"/>
+      <rect x="0" y="0" width="130" height="3" fill="#0891b2" rx="7" opacity="0.8"/>
+      <text x="65" y="26" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="600" fill="#0f172a">Delta Tables</text>
+    </g>
+    <g transform="translate(15, 174)">
+      <rect x="0" y="0" width="130" height="38" fill="white" rx="7" opacity="0.95"/>
+      <rect x="0" y="0" width="130" height="3" fill="#0891b2" rx="7" opacity="0.8"/>
+      <text x="65" y="26" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="11" font-weight="600" fill="#0f172a">Streaming Table</text>
+    </g>
+    <g transform="translate(15, 221)">
+      <rect x="0" y="0" width="130" height="38" fill="white" rx="7" opacity="0.9"/>
+      <rect x="0" y="0" width="130" height="3" fill="#0891b2" rx="7" opacity="0.8"/>
+      <text x="65" y="26" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="10" font-weight="600" fill="#0f172a">Structured Logs</text>
+    </g>
+
+    <text x="80" y="295" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" fill="white" opacity="0.7" font-style="italic">
+      Data Lakehouse
+    </text>
+  </g>
+
+  <!-- ENHANCED ARROWS / FLOWS -->
+
+  <!-- Data Flow: Source -> Databricks (Green) - Routes ABOVE Lakebase/Dagster -->
+  <!-- Databricks starts at x=840, so end at 828 (840-12) for arrow tip to touch -->
+  <path d="M 230 280 L 250 280 Q 265 280 265 265 L 265 105 Q 265 90 280 90 L 803 90 Q 818 90 818 105 L 818 265 Q 818 280 828 280"
+        fill="none" stroke="#10b981" stroke-width="3" marker-end="url(#arrowGreen)" opacity="0.9"/>
+  <text x="550" y="80" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" font-weight="600" fill="#10b981">
+    JDBC / Native Data Flow
+  </text>
+
+  <!-- Data Flow: Databricks -> Unity Catalog (Green) -->
+  <!-- Unity starts at x=1110, so end at 1098 -->
+  <path d="M 1020 280 L 1098 280" fill="none" stroke="#10b981" stroke-width="3" marker-end="url(#arrowGreen)" opacity="0.9"/>
+
+  <!-- Structured Logs: Databricks -> Unity Catalog Streaming Table (Orange dashed) -->
+  <!-- Unity starts at x=1110, so end at 1098 -->
+  <path d="M 1020 400 L 1060 400 Q 1075 400 1075 415 L 1075 415 Q 1075 430 1090 430 L 1098 430"
+        fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrowOrange)" opacity="0.9"/>
+  <text x="1065" y="455" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="9" font-weight="600" fill="#f59e0b">
+    Logs
+  </text>
+
+  <!-- Control Flow: Lakebase -> Dagster (Blue) -->
+  <!-- Dagster starts at x=560, so end at 548 -->
+  <path d="M 460 300 L 548 300" fill="none" stroke="#3b82f6" stroke-width="3" marker-end="url(#arrowBlue)" opacity="0.9"/>
+  <text x="510" y="290" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" font-weight="600" fill="#3b82f6">
+    Config
+  </text>
+
+  <!-- Control Flow: Dagster -> Lakebase (Blue) -->
+  <!-- Lakebase ends at x=460, arrow goes left, so end at 472 -->
+  <path d="M 560 340 L 472 340" fill="none" stroke="#3b82f6" stroke-width="3" marker-end="url(#arrowBlue)" opacity="0.9"/>
+  <text x="510" y="360" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" font-weight="600" fill="#3b82f6">
+    Status
+  </text>
+
+  <!-- Control Flow: Dagster -> Databricks via Pipes (Blue) -->
+  <!-- Databricks starts at x=840, so end at 828 -->
+  <path d="M 740 320 L 828 320" fill="none" stroke="#3b82f6" stroke-width="3" marker-end="url(#arrowBlue)" opacity="0.9"/>
+  <text x="790" y="310" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="10" font-weight="600" fill="#3b82f6">
+    Pipes
+  </text>
+
+  <!-- Status Updates: Databricks -> Lakebase (Purple dashed) - Routes BELOW boxes -->
+  <!-- Lakebase bottom at y=460, arrow goes up, so end at 472 -->
+  <path d="M 930 480 L 930 550 Q 930 565 915 565 L 385 565 Q 370 565 370 550 L 370 472"
+        fill="none" stroke="#a855f7" stroke-width="2.5" stroke-dasharray="8,4" marker-end="url(#arrowPurple)" opacity="0.85"/>
+  <text x="650" y="590" text-anchor="middle" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" font-weight="600" fill="#a855f7">
+    Status Updates (via Lakebase tables)
+  </text>
+
+  <!-- Optional dl-app note with refined styling -->
+  <g transform="translate(1040, 680)">
+    <rect x="0" y="0" width="230" height="55" fill="white" rx="8" stroke="#e2e8f0" stroke-width="1.5" filter="url(#shadow)"/>
+    <rect x="10" y="10" width="4" height="35" fill="#a855f7" rx="2" opacity="0.6"/>
+    <text x="24" y="24" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="12" font-weight="600" fill="#334155">Optional: dl-app UI</text>
+    <text x="24" y="41" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="11" fill="#64748b">for managing control tables</text>
+  </g>
+</svg>

@@ -231,7 +231,8 @@ stateDiagram-v2
         f1: Truncate destination
         f2: Load all rows from source
         f3: Write with overwrite mode
-        f1 --> f2 --> f3
+        f1 --> f2
+        f2 --> f3
     }
 
     state incremental {
@@ -239,7 +240,9 @@ stateDiagram-v2
         i2: Filter WHERE col > last_value
         i3: Merge upsert by primary keys
         i4: Update incremental_value
-        i1 --> i2 --> i3 --> i4
+        i1 --> i2
+        i2 --> i3
+        i3 --> i4
     }
 
     state append_only {
@@ -247,14 +250,17 @@ stateDiagram-v2
         a2: Filter WHERE col > last_value
         a3: Append (no merge)
         a4: Update incremental_value
-        a1 --> a2 --> a3 --> a4
+        a1 --> a2
+        a2 --> a3
+        a3 --> a4
     }
 
     state rolling {
         r1: Calculate window (today - N days)
         r2: Filter by rolling_column
         r3: Merge + delete outside window
-        r1 --> r2 --> r3
+        r1 --> r2
+        r2 --> r3
     }
 
     state check_and_load {
@@ -272,7 +278,11 @@ stateDiagram-v2
         cb4: First chunk: overwrite
         cb5: Subsequent: append
         cb6: Update incremental_value at end
-        cb1 --> cb2 --> cb3 --> cb4 --> cb5 --> cb6
+        cb1 --> cb2
+        cb2 --> cb3
+        cb3 --> cb4
+        cb4 --> cb5
+        cb5 --> cb6
     }
 
     chunked_backfill --> incremental: After backfill complete,<br/>switch to incremental

@@ -271,8 +271,8 @@ stateDiagram-v2
         cb1: Query source MIN/MAX
         cb2: Calculate chunk boundaries
         cb3: Process chunks sequentially
-        cb4: First chunk: overwrite
-        cb5: Subsequent: append
+        cb4: First chunk - overwrite
+        cb5: Subsequent chunks - append
         cb6: Update incremental_value at end
         cb1 --> cb2
         cb2 --> cb3

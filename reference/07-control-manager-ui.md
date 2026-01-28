@@ -26,7 +26,7 @@ cd dl-app && python app.py
 
 The main dashboard displays database configurations as cards with KPI metrics.
 
-![Dashboard](images/01-dashboard.png)
+![Dashboard](images/dataloader-dashboard.png)
 
 **Features**:
 - **Database cards**: One card per `table_control_dbconfig` entry
@@ -48,9 +48,7 @@ The main dashboard displays database configurations as cards with KPI metrics.
 
 ## Database Configuration
 
-### List View
-
-![Database Config List](images/02-dbconfig-list.png)
+![Database Config List](images/dataloader-database-config.png)
 
 Shows all database configurations with:
 - Database type icon (SQL Server, Oracle, PostgreSQL, Snowflake, ClickHouse)
@@ -58,11 +56,7 @@ Shows all database configurations with:
 - Connection scope (dev, pre_prod, prd)
 - Table count
 
-### Create Database Config
-
-![Create Database Config](images/03-dbconfig-create.png)
-
-**Required Fields**:
+**Required Fields** (when creating):
 | Field | Description |
 |-------|-------------|
 | Config Key | Unique identifier (e.g., `sales_mssql_prod`) |
@@ -90,7 +84,7 @@ Shows all database configurations with:
 
 ### Table List
 
-![Table List](images/04-table-list.png)
+![Table List](images/dataloader-table-list.png)
 
 Displays all tables for a database configuration with:
 - Source and destination table names
@@ -106,7 +100,7 @@ Displays all tables for a database configuration with:
 
 ### Create Table
 
-![Create Table](images/05-table-create.png)
+![Create Table](images/dataloader-create-table.png)
 
 **Source Configuration**:
 | Field | Description |
@@ -123,7 +117,7 @@ Displays all tables for a database configuration with:
 
 **Load Strategy** (form adapts dynamically):
 
-![Strategy Fields](images/06-strategy-fields.png)
+![Strategy Fields](images/dataloader-load-strategy.png)
 
 | Strategy | Required Fields |
 |----------|-----------------|
@@ -146,15 +140,9 @@ Displays all tables for a database configuration with:
 | Active | Enable/disable table pickup by sensor |
 | Force Full Load | Override strategy for next run |
 
-### Edit Table
-
-![Edit Table](images/07-table-edit.png)
-
-Same fields as create, with current values populated. Strategy fields update dynamically when strategy changes.
-
 ### Error Modal
 
-![Error Modal](images/08-error-modal.png)
+![Error Modal](images/dataloader-error-modal.png)
 
 Click a red "Failed" status badge to see:
 - Full error message
@@ -167,7 +155,7 @@ Click a red "Failed" status badge to see:
 
 ### Per-Database Bulk Edit
 
-![Bulk Edit](images/09-bulk-edit.png)
+![Bulk Edit](images/dataloader-bulk-edit.png)
 
 Spreadsheet-style editing for all tables in a database configuration.
 
@@ -187,7 +175,7 @@ Spreadsheet-style editing for all tables in a database configuration.
 
 ### Global Bulk Edit
 
-![Global Bulk Edit](images/10-bulk-edit-all.png)
+![Global Bulk Edit](images/dataloader-bulk-edit-db.png)
 
 Edit tables across all database configurations. Same features as per-database, with database key column added.
 
@@ -197,7 +185,7 @@ Edit tables across all database configurations. Same features as per-database, w
 
 ### Diff View
 
-![Promotion Diff](images/11-promotion-diff.png)
+![Promotion Diff](images/dataloader-diff-promote.png)
 
 Compare test vs production configurations side-by-side.
 
@@ -219,9 +207,7 @@ Compare test vs production configurations side-by-side.
 
 ## Status Overview
 
-### Global Status View
-
-![Status Overview](images/12-status-overview.png)
+![Status Overview](images/dataloader-status-overview.png)
 
 View all tables with a specific status across all databases.
 
@@ -249,6 +235,8 @@ View all tables with a specific status across all databases.
 
 ## History Tracking
 
+![Change History](images/dataloader-change-history.png)
+
 All changes are logged to `table_control_history` with:
 
 | Field | Description |
@@ -272,7 +260,7 @@ ORDER BY changed_at DESC;
 
 ## Environment Switching
 
-![Environment Switch](images/13-env-switch.png)
+![Environment Switch](images/dataloader-environment-switch.png)
 
 Toggle between Test and Production databases using the dropdown in the header.
 

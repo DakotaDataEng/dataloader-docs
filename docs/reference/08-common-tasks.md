@@ -9,8 +9,8 @@ what to watch out for.
 
 1. Open the database, **Add table**.
 2. Fill in the source schema and table. Use **Preview rows** to prove you have the right one.
-3. Set the destination catalog, schema and name. Destination names take letters, digits and
-   underscores only; the form rejects anything else and suggests a folded version.
+3. Set the destination catalog, schema and name. Destination names are limited to `[A-Za-z0-9_]`;
+   the form rejects anything else and suggests a folded version.
 4. Pick a strategy. Start with `full` unless the table is large.
 5. Set the cron. It is shown in `America/Denver` and stored as UTC.
 6. Leave **Active** off until you have reviewed it, then turn it on.

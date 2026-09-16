@@ -10,7 +10,7 @@ source's catalog, promote configuration to production, and manage the secrets be
 
 ## How it runs
 
-Not a local script. It is a Databricks App, deployed by ADO pipeline 22 from the workspace repo.
+The app runs as a Databricks App, deployed by ADO pipeline 22 from the workspace repo.
 
 | | |
 |---|---|

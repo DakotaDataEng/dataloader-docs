@@ -31,18 +31,18 @@ does the work and reports back.
 | Destination | Unity Catalog | Holds the loaded data in the bronze layer |
 | Interface | dl-app | The web app people use to manage all of it |
 
-### Sensors, not a schedule
+### How scheduling works
 
-There is no static DAG of tables. Every 60 seconds the master sensor asks the control database which
-tables are due, and starts runs for them. A table's `load_cron` sets when it becomes due;
+Every 60 seconds the master sensor asks the control database which tables are due and starts runs
+for them. There is no static DAG of tables. A table's `load_cron` sets when it becomes due, and
 `next_load_date_time` records when that is next.
 
-The practical consequence: adding a table to the system is an INSERT. Nothing is deployed, and the
-code location reloads itself so the new table shows up as an asset.
+So adding a table to the system is an INSERT. Nothing is deployed, and the code location reloads
+itself so the new table shows up as an asset.
 
 ### Loads are batched
 
-One Dagster run loads **up to twelve tables**, not one. The sensor groups the tables that are due by
+One Dagster run loads **up to twelve tables**. The sensor groups the tables that are due by
 source database and forced-reload flag, and each run builds one `DataLoader` that loads its tables
 on parallel threads.
 
@@ -191,7 +191,7 @@ connecting.
 | `check_and_load` | Sources that change rarely | Count first; if anything changed, reload the table |
 | `chunked_backfill` | First load of a very large table | Sequential chunks, then hand over to incremental |
 
-Deletes are a separate per-table option, not a property of the strategy. See
+Deletes are a separate per-table option that works across several strategies. See
 [Load Strategies](05-load-strategies.md).
 
 ---

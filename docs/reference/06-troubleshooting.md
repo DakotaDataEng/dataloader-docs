@@ -132,9 +132,9 @@ AND (
 )
 ```
 
-A row sitting at `Failed` never runs again on its own. Not when the cron fires, not the next day,
-not ever, until something sets the status to NULL. The same is true of `Queued` and `In Progress`,
-which is what stops double-triggering. Only `Succeeded` and NULL re-qualify, and a NULL skips the
+A row sitting at `Failed` never runs again until something sets its status to NULL, however many
+times its cron fires. The same is true of `Queued` and `In Progress`, which is what stops
+double-triggering. Only `Succeeded` and NULL re-qualify, and a NULL skips the
 due-time check entirely.
 
 The other quiet exclusion is the INNER JOIN to `table_control_dbconfig`. A row whose

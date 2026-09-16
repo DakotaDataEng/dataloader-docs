@@ -413,7 +413,7 @@ INSERT INTO control.table_control (
 
 **When to Use**:
 - Tables that change rarely, and change in many places when they do
-- Tables where a delta merge is not worth the machinery
+- Tables small enough that a delta merge costs more than it saves
 
 **How It Works**:
 1. Run one `COUNT(*)` of rows above the cursor
@@ -666,9 +666,8 @@ read the whole source, not their window. The reason is the write side: a full lo
 destination, so a windowed read would leave the table holding only that slice. The loader logs the
 bypass when it happens.
 
-With a `partition_column` set, a forced reload is a partitioned JDBC read. Without one it is a single
-connection over the whole table, which is the practical reason the form requires the partition
-fields.
+With a `partition_column` set, a forced reload is a partitioned JDBC read. Without one it is a
+single connection over the whole table, which is why the form requires the partition fields.
 
 ---
 

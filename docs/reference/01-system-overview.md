@@ -46,8 +46,8 @@ One Dagster run loads **up to twelve tables**. The sensor groups the tables that
 source database and forced-reload flag, and each run builds one `DataLoader` that loads its tables
 on parallel threads.
 
-This matters for reading anything else in these docs: a run is not a table. Outcomes are recorded
-per table as each one finishes, so one bad table in a batch does not fail the other eleven. See
+A run therefore covers many tables. Outcomes are recorded per table as each one finishes, so one
+bad table in a batch does not fail the rest. See
 [Dagster Orchestration](03-dagster-orchestration.md) for the full flow.
 
 ### Cursor tracking

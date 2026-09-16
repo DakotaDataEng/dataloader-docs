@@ -163,7 +163,7 @@ Sections: Source, Custom SQL (with Format SQL), Destination, Load Strategy, Prim
 Incremental Configuration, Partitioning, Advanced. Strategy-dependent fields swap in when the
 strategy changes.
 
-Controls worth knowing:
+What the controls do:
 
 | Control | Notes |
 |---|---|

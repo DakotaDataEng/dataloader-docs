@@ -1,6 +1,6 @@
 # Sequence Diagrams
 
-Step by step sequences for the operations worth understanding in detail. Checked against
+Step by step sequences for the operations that need the detail. Checked against
 `dbx-data@dev`.
 
 ---

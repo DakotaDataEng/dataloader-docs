@@ -38,7 +38,7 @@ S3 Iceberg    ─┘                               work              to 12 table
                     (Databricks App)
 ```
 
-Worth knowing up front:
+How it behaves:
 
 1. **A run is not a table.** Loads are batched. The sensor groups the tables that are due by source
    database, and one run loads up to twelve of them. Outcomes are recorded per table as each

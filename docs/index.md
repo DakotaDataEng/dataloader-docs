@@ -50,7 +50,7 @@ is a row, not a deployment.
 
 ---
 
-## Worth knowing up front
+## How it behaves
 
 **A run is not a table.** Loads are batched: the sensor groups the tables that are due by source
 database, and one run loads up to twelve of them on parallel threads. Outcomes are recorded per
@@ -80,7 +80,7 @@ happen there.
 
 ## Vocabulary
 
-Worth knowing before reading anything else.
+The terms the rest of the site uses.
 
 | Term | Meaning |
 |---|---|

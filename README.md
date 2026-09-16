@@ -1,91 +1,98 @@
 # DataLoader Documentation
 
-Production data orchestration system that loads data from source databases into Databricks Unity Catalog.
-
-## Quick Navigation
-
-| Audience | Start Here |
-|----------|------------|
-| Executive/Stakeholder | [System Overview Diagram](diagrams/01-system-overview.svg) |
-| Architect | [Architecture Diagrams](diagrams/02-architecture.md) |
-| Developer | [System Overview](reference/01-system-overview.md) |
-| Operator | [Troubleshooting Guide](reference/06-troubleshooting.md) |
+DataLoader moves data from source databases into the Databricks Unity Catalog bronze layer. What
+loads, how, and on what schedule is configuration in a Postgres database, not code. Adding a table
+is a row, not a deployment.
 
 ---
 
-## System at a Glance
+## Start here
+
+| If you are | Read |
+|---|---|
+| New to the system | [System Overview](reference/01-system-overview.md) |
+| Running it day to day | [Common Tasks](reference/08-common-tasks.md) |
+| Fixing something broken | [Troubleshooting](reference/06-troubleshooting.md) |
+| Using the web app | [Control Manager UI](reference/07-control-manager-ui.md) |
+| Reviewing the design | [Architecture Diagrams](diagrams/02-architecture.md) |
+| Changing the loader | [DataLoader Class](reference/04-dataloader-class.md) |
+
+---
+
+## The system in one picture
 
 ```
-Source Databases          Orchestration              Execution              Destination
------------------         -------------              ---------              -----------
+Source Databases          Control            Orchestration         Execution           Destination
+----------------          -------            -------------         ---------           -----------
 SQL Server    ─┐
-Oracle        ─┼─►  Lakebase  ◄──►  Dagster  ──►  Databricks  ──►  Unity Catalog
-PostgreSQL    ─┤    (Control)       (Sensors)      (Spark)          (Bronze)
-Snowflake     ─┤
-ClickHouse    ─┘
+Oracle        ─┤                                                                       Unity Catalog
+PostgreSQL    ─┼─►   Lakebase (Postgres)  ◄──►   Dagster    ──►   Databricks   ──►     bronze layer
+Snowflake     ─┤     what, how, when           8 sensors         one job per          Delta tables
+ClickHouse    ─┤     and what happened         batches the       batch of up
+S3 Iceberg    ─┘                               work              to 12 tables
+                            ▲
+                            │
+                         dl-app
+                    (Databricks App)
 ```
 
+Three things surprise people who knew the older design:
+
+1. **One run loads up to twelve tables**, not one. The sensor groups the tables that are due by
+   source database. Outcomes are recorded per table as each finishes.
+2. **dl-app is not a local dev tool.** It is a deployed Databricks App and it is how the system is
+   operated.
+3. **A row that failed will not run again on its own.** The view the sensor reads only re-qualifies
+   a row whose last status is `Succeeded` or NULL.
+
 ---
+
+## Reference
+
+| File | Covers |
+|---|---|
+| [01-system-overview.md](reference/01-system-overview.md) | What it is, key concepts, end to end flow |
+| [02-lakebase-control-database.md](reference/02-lakebase-control-database.md) | Every control table, the view the sensor reads, diagnostic queries |
+| [03-dagster-orchestration.md](reference/03-dagster-orchestration.md) | Batching, all eight sensors, assets, failure attribution |
+| [04-dataloader-class.md](reference/04-dataloader-class.md) | The loader and the modules around it |
+| [05-load-strategies.md](reference/05-load-strategies.md) | The six strategies, cursors, deletes, backfills |
+| [06-troubleshooting.md](reference/06-troubleshooting.md) | Symptoms, causes, queries |
+| [07-control-manager-ui.md](reference/07-control-manager-ui.md) | The web app, screen by screen |
+| [08-common-tasks.md](reference/08-common-tasks.md) | Recipes: add tables, reload, backfill, promote |
 
 ## Diagrams
 
-| File | Description |
-|------|-------------|
-| [01-system-overview.svg](diagrams/01-system-overview.svg) | High-level visual showing all components and flows |
-| [02-architecture.md](diagrams/02-architecture.md) | Mermaid diagrams: components, data flow, sensors, state machines |
-| [03-sequence-diagrams.md](diagrams/03-sequence-diagrams.md) | Step-by-step sequences for key operations |
+| File | Covers |
+|---|---|
+| [01-system-overview.svg](diagrams/01-system-overview.svg) | One page visual of the whole system |
+| [02-architecture.md](diagrams/02-architecture.md) | Components, data flow, sensors, state machines |
+| [03-sequence-diagrams.md](diagrams/03-sequence-diagrams.md) | Batch load, batch failure, incremental, backfill, timeouts |
 
 ---
 
-## Reference Documentation
+## Components
 
-| File | Description |
-|------|-------------|
-| [01-system-overview.md](reference/01-system-overview.md) | What is DataLoader, key concepts, end-to-end flow |
-| [02-lakebase-control-database.md](reference/02-lakebase-control-database.md) | Control tables: table_control, dbconfig, metadata, history |
-| [03-dagster-orchestration.md](reference/03-dagster-orchestration.md) | Sensors, assets, jobs, Databricks Pipes integration |
-| [04-dataloader-class.md](reference/04-dataloader-class.md) | DataLoader class: methods, database support, threading |
-| [05-load-strategies.md](reference/05-load-strategies.md) | 6 strategies: full, incremental, append_only, rolling, check_and_load, chunked_backfill |
-| [06-troubleshooting.md](reference/06-troubleshooting.md) | Common issues, debugging steps, query recipes |
-| [07-control-manager-ui.md](reference/07-control-manager-ui.md) | dl-app web UI: dashboard, bulk edit, promotion workflow |
+**Lakebase (control database).** Postgres. `table_control` holds one row per table.
+`table_control_dbconfig` holds one row per source database, storing Key Vault secret **names**, never
+values. `historical_metadata` records every run, `table_control_history` every configuration change,
+and `source_catalog` caches what a source database contains. Two databases: `dataloader` for
+production and `dataloader_test` for pre-production.
 
----
+**Dagster (orchestration).** Self-hosted. Eight sensors and one schedule. The master sensor finds
+tables that are due, gates chunked backfills to one per database, and starts one run per batch. Four
+sensors ship stopped and have to be enabled after a deployment.
 
-## Core Components
+**DataLoader (execution).** A Spark class plus focused modules for cursors, backfill resume,
+identifier quoting, source connection settings, catalog crawling and column advice. One instance
+loads a whole batch on parallel threads.
 
-### 1. Lakebase Control Database
-PostgreSQL database storing configuration and execution state.
-- **Tables**: `table_control`, `table_control_dbconfig`, `historical_metadata`, `table_control_history`
-- **Environments**: `dataloader` (prod), `dataloader_test` (pre-prod)
-
-### 2. Dagster Orchestration
-Sensor-based scheduling and job management.
-- **5 Sensors**: master (triggers), longqueued monitor, longrunning monitor, failed monitor, landing table monitor
-- **2 Assets**: `dataloader_table_load`, `dataloader_retry_analysis`
-
-### 3. DataLoader Class
-Spark-based data loading engine (`dbx/functions/dataloader.py`).
-- **6 Database Types**: SQL Server, Oracle, PostgreSQL, Snowflake, Snowflake PEM, ClickHouse
-- **6 Load Strategies**: full, incremental, append_only, rolling, check_and_load, chunked_backfill
-
-### 4. Databricks Execution
-Dagster Pipes integration for remote Spark execution.
-- **Pipes Scripts**: `dataloader_pipe.py`, `dataloader_retry_pipe.py`
-- **Destination**: Unity Catalog bronze layer
+**dl-app (interface).** Flask, deployed as a Databricks App. Configure databases and tables, watch
+loads on the Operations and Runs pages, crawl a source catalog and create tables in bulk, promote
+configuration to production, and manage Key Vault secrets.
 
 ---
 
-### 5. Control Manager UI (dl-app)
-Flask web UI for managing control tables (development tool).
-- **Features**: Dashboard, bulk edit, promotion workflow, history tracking
-- **Documentation**: [Control Manager UI Guide](reference/07-control-manager-ui.md)
+## Conventions
 
----
-
-## Quick Links
-
-- **Add new table**: See [Load Strategies](reference/05-load-strategies.md)
-- **Debug failed load**: See [Troubleshooting](reference/06-troubleshooting.md)
-- **Understand sensors**: See [Dagster Orchestration](reference/03-dagster-orchestration.md)
-- **Database connection strings**: See [DataLoader Class](reference/04-dataloader-class.md)
-- **Use the web UI**: See [Control Manager UI](reference/07-control-manager-ui.md)
+See [CLAUDE.md](CLAUDE.md). The short version: every claim here is checked against
+`AnteroDataLakehouse@dev`, and when the code and the docs disagree, the docs are wrong.

@@ -1,263 +1,245 @@
 # Sequence Diagrams
 
-Step-by-step sequences for key DataLoader operations.
+Step by step sequences for the operations worth understanding in detail. Checked against
+`dbx-data@dev`.
 
 ---
 
-## 1. Successful Table Load
+## 1. A batch loads
 
-Complete sequence from sensor trigger to successful completion.
+The sensor selects tables, groups them, and one run loads up to twelve of them. Per-table outcomes
+are written as each table finishes, not at the end.
 
 ```mermaid
 sequenceDiagram
-    participant Sensor as master_sensor
-    participant Lakebase as Lakebase DB
-    participant Asset as dataloader_table_load
-    participant Pipes as Dagster Pipes
-    participant DBX as Databricks
+    participant LB as Lakebase
+    participant MS as master_sensor
+    participant AS as batch asset
+    participant PIPE as dataloader_pipe
     participant DL as DataLoader
-    participant Source as Source DB
+    participant SRC as Source DB
     participant UC as Unity Catalog
 
-    Note over Sensor: Runs every 60 seconds
+    Note over MS: Every 60 seconds
 
-    Sensor->>Lakebase: Query ready tables<br/>(is_active=true, next_load <= NOW,<br/>status NOT IN Queued/In Progress)
-    Lakebase-->>Sensor: Return batch (max 10 tables)
+    MS->>LB: SELECT from dataloader_control_vw
+    LB-->>MS: Ready tables, due order
+    MS->>LB: Databases with a running backfill
+    Note over MS: Gate to one backfill per database
+    Note over MS: Take whole runs until 48 tables covered
+    Note over MS: Group by (database, load_full, solo),<br/>chunk at 12
 
-    loop For each table
-        Sensor->>Lakebase: INSERT historical_metadata<br/>(load_queued_time)
-        Sensor->>Lakebase: UPDATE table_control<br/>SET status='Queued'
-        Sensor->>Asset: yield RunRequest(table_config)
+    MS->>LB: INSERT historical_metadata, one row per table
+    LB-->>MS: metadata ids by control_key
+    MS->>LB: UPDATE every selected table to Queued
+    MS->>AS: One RunRequest per group
+
+    AS->>LB: Mark every table In Progress + Dagster URL
+    AS->>PIPE: Submit one Databricks job (Pipes)
+
+    PIPE->>LB: Mark In Progress + both run URLs
+    PIPE->>DL: One DataLoader for the batch
+    DL->>DL: process_tables() on a worker thread,<br/>12 table threads
+
+    loop Every 15 seconds while the worker runs
+        PIPE->>DL: Which tables finished and are unrecorded?
+        DL-->>PIPE: Outcomes so far
+        PIPE->>LB: Succeeded or Failed per table
+        PIPE->>LB: Close that table's history row
     end
 
-    Asset->>Lakebase: UPDATE status='In Progress'<br/>SET dagster_run_url
-    Asset->>Pipes: Submit Databricks task
-    Pipes->>DBX: Execute dataloader_pipe.py
-
-    DBX->>DBX: Load secrets from Key Vault
-    DBX->>Lakebase: UPDATE databricks_run_url
-
-    DBX->>DL: Initialize DataLoader(db_config)
-    DL->>Lakebase: Query incremental_value
-    Lakebase-->>DL: Return last value (or default)
-
-    DL->>Source: Execute JDBC/Native query<br/>WHERE col > last_value
-    Source-->>DL: Return DataFrame
-
-    DL->>UC: Write to Unity Catalog<br/>(merge/append/overwrite)
-    UC-->>DL: Write complete
-
-    DL->>DL: Calculate MAX(incremental_column)
-
-    DBX->>Lakebase: UPDATE status='Succeeded'<br/>SET incremental_value, rows_processed
-    DBX->>Lakebase: UPDATE historical_metadata<br/>(load_end_time, rows_processed)
-
-    DBX-->>Pipes: Return MaterializeResult
-    Pipes-->>Asset: Execution complete
-    Asset-->>Sensor: Run complete
-```
-
----
-
-## 2. Failed Load with AI Retry
-
-Sequence showing failure detection and AI-powered retry analysis.
-
-```mermaid
-sequenceDiagram
-    participant Asset as dataloader_table_load
-    participant DBX as Databricks
-    participant DL as DataLoader
-    participant Source as Source DB
-    participant Lakebase as Lakebase DB
-    participant FM as failed_monitor
-    participant Retry as dataloader_retry_analysis
-    participant AI as AI Analysis
-
-    Note over Asset,DL: Normal execution begins...
-
-    Asset->>DBX: Execute dataloader_pipe.py
-    DBX->>DL: Initialize DataLoader
-
-    DL->>Source: Execute query
-    Source--xDL: Connection timeout / Error
-
-    DL->>DL: Catch exception<br/>Add to errors_list
-
-    DBX->>Lakebase: UPDATE status='Failed'<br/>SET error_message
-    DBX->>Lakebase: UPDATE historical_metadata<br/>SET load_status='Failed'
-
-    Note over FM: Runs every 15 minutes
-
-    FM->>Lakebase: Query tables WHERE<br/>status='Failed' AND retry_count < 3
-    Lakebase-->>FM: Return failed tables
-
-    FM->>Retry: yield RunRequest(failed_table)
-
-    Retry->>DBX: Execute dataloader_retry_pipe.py
-    DBX->>AI: Analyze error message
-
-    alt Retry Recommended
-        AI-->>DBX: Decision: RETRY<br/>Confidence: 85%
-        DBX->>Lakebase: UPDATE status=NULL<br/>INCREMENT retry_count<br/>PREPEND '[AI: Retry Recommended]'
-        Note over Lakebase: Table eligible for<br/>next sensor pickup
-    else Manual Review Required
-        AI-->>DBX: Decision: REVIEW<br/>Confidence: 70%
-        DBX->>Lakebase: UPDATE status='Failed'<br/>PREPEND '[AI: Requires Review]'
-        Note over Lakebase: Table flagged for<br/>manual intervention
+    par Per table, inside the loader
+        DL->>LB: Read cursor from the control row
+        DL->>SRC: Windowed read over parallel JDBC connections
+        SRC-->>DL: Rows
+        DL->>UC: Delta write (overwrite, append, or stage then MERGE)
+        DL->>LB: New cursor, capped at run start
     end
 
-    DBX-->>Retry: Return analysis result
+    Note over PIPE: Worker joins
+    PIPE->>LB: Any table with no result is Failed,<br/>never left In Progress
+    PIPE->>AS: One materialization carrying table_results
+    AS->>UC: One bronze materialization per table
+
+    alt Any table failed
+        PIPE->>PIPE: Raise, naming the failed tables
+        Note over AS: Run goes red. Tables that loaded<br/>keep Succeeded (Partial)
+    end
 ```
 
 ---
 
-## 3. Incremental Load Details
+## 2. A batch fails
 
-Detailed sequence showing incremental value tracking and delta processing.
+One table failing does not fail its siblings. A batch dying does, and three layers catch it.
 
 ```mermaid
 sequenceDiagram
+    participant LB as Lakebase
+    participant AS as batch asset
+    participant PIPE as dataloader_pipe
     participant DL as DataLoader
-    participant Lakebase as Lakebase DB
-    participant Source as Source DB
-    participant Spark as Spark Session
-    participant UC as Unity Catalog
+    participant RS as run status sensors
+    participant RM as reconcile_monitor
 
-    Note over DL: load_strategy = 'incremental'<br/>incremental_column = 'modified_date'<br/>primary_key_columns = 'order_id'
-
-    DL->>Lakebase: SELECT incremental_value<br/>FROM table_control<br/>WHERE control_key = ?
-    Lakebase-->>DL: '2024-01-15 10:30:00'<br/>(or '1900-01-01' if first run)
-
-    DL->>DL: build_query()<br/>Add WHERE clause based on db_type
-
-    Note over DL: PostgreSQL:<br/>WHERE modified_date > ('2024-01-15'::timestamp + INTERVAL '1 second')<br/><br/>SQL Server:<br/>WHERE modified_date > CAST('2024-01-15' AS DATETIME2)<br/><br/>Oracle:<br/>WHERE CAST(modified_date AS DATE) > TO_DATE('2024-01-15', 'YYYY-MM-DD HH24:MI:SS')
-
-    DL->>Source: spark.read.format("jdbc")<br/>.option("query", built_query)<br/>.load()
-    Source-->>Spark: Return DataFrame (delta rows)
-
-    DL->>DL: transform_column_names()<br/>(spaces → underscores)
-
-    DL->>DL: Create staging table<br/>table_name__stg_{uuid}
-
-    DL->>UC: overwrite_df_to_unity()<br/>Write to staging table
-    UC-->>DL: Staging table created
-
-    DL->>UC: DeltaTable.forName(target)
-    DL->>UC: target.merge(source, merge_condition)<br/>.whenMatchedUpdateAll()<br/>.whenNotMatchedInsertAll()<br/>.execute()
-
-    Note over DL,UC: merge_condition:<br/>target.order_id = source.order_id
-
-    UC-->>DL: Merge complete
-
-    DL->>UC: DROP TABLE staging_table
-    UC-->>DL: Staging dropped
-
-    DL->>UC: SELECT MAX(modified_date)<br/>FROM target_table
-    UC-->>DL: '2024-01-20 14:45:30'
-
-    DL->>DL: Stage update in update_list
-
-    Note over DL: After all tables complete...
-
-    DL->>Lakebase: Batch UPDATE table_control<br/>SET incremental_value = '2024-01-20 14:45:30'
+    alt One table raises, the batch survives
+        DL-->>PIPE: That table is in errors_list
+        PIPE->>LB: That table Failed, with its real error
+        Note over PIPE: The other 11 keep their own outcomes.<br/>Batch rolls up to Partial and raises.
+    else The batch dies after starting
+        PIPE->>LB: Every unresolved table Failed<br/>with the batch error
+        Note over PIPE: Already terminal tables keep their outcome
+    else The job submission raises
+        AS->>LB: Read each table's current status
+        AS->>LB: Fail only rows not already terminal
+    else The run is canceled or dies outside the asset
+        RS->>LB: Read config.tables[*].config_id from the run config
+        RS->>LB: Fail only non-terminal rows
+    else Nothing above ran, run config unreadable
+        Note over RM: 10 minutes later
+        RM->>LB: Rows In Progress &gt; 20 min whose<br/>last_dagster_run is gone or finished
+        RM->>LB: Mark Failed, close orphaned history rows
+    end
 ```
+
+The last branch is the backstop added after the September 2026 outage, when rows sat In Progress for
+days because the runs that owned them had been killed.
 
 ---
 
-## 4. Chunked Backfill Flow
-
-Sequence for loading large tables in sequential chunks.
+## 3. An incremental load
 
 ```mermaid
 sequenceDiagram
+    participant LB as Lakebase
     participant DL as DataLoader
-    participant Lakebase as Lakebase DB
-    participant Source as Source DB
-    participant Spark as Spark Session
-    participant UC as Unity Catalog
+    participant SRC as Source DB
+    participant STG as stage table
+    participant DEST as Destination
 
-    Note over DL: load_strategy = 'chunked_backfill'<br/>incremental_column = 'id'<br/>incremental_type = 'integer'
+    DL->>LB: Read incremental_value, lookback hours,<br/>deletes_checked_at
+    Note over DL: Window starts at cursor minus lookback<br/>(default 12h, 0 for append_only)
+    DL->>DL: Stamp run start in the source's clock
 
-    DL->>Source: SELECT MIN(id), MAX(id)<br/>FROM source_table
-    Source-->>DL: min=1, max=10,000,000
+    opt Bounds are NULL and a partition column is set
+        DL->>SRC: SELECT MIN, MAX of the partition column
+        DL->>LB: Write the bounds back
+    end
 
-    DL->>DL: _auto_calculate_chunks()<br/>Based on data type and range
+    DL->>SRC: SELECT where cursor column > window start,<br/>read over parallel connections
+    SRC-->>DL: Rows
 
-    Note over DL: For integers: ~100k rows/chunk<br/>For timestamps: ~30 days/chunk<br/><br/>Result: 100 chunks<br/>[(1, 100000), (100001, 200000), ...]
+    DL->>STG: Overwrite stage
+    alt Stage is empty
+        DL->>STG: Drop stage
+        Note over DL: Nothing to merge, cursor unchanged
+    else
+        DL->>DEST: Ensure Delta tuning and clustering
+        DL->>DEST: MERGE on primary key
+        DL->>STG: MAX of the cursor column in the stage
+        Note over DL: Cap at run start plus margin, so a<br/>future-dated row cannot skip everything
+        DL->>LB: Write the new cursor
+        DL->>STG: Drop stage
+    end
 
-    loop For i, (chunk_start, chunk_end) in chunks
-        DL->>DL: build_chunk_query()<br/>WHERE id BETWEEN chunk_start AND chunk_end
-
-        DL->>Source: Load chunk via JDBC
-        Source-->>Spark: DataFrame for chunk
-
-        alt First chunk (i=0)
-            DL->>UC: write_chunk_to_unity(overwrite=True)
-            Note over UC: Creates fresh table
-        else Subsequent chunks
-            DL->>UC: write_chunk_to_unity(overwrite=False)
-            Note over UC: Appends to existing
+    opt is_delete and the last check is older than 24h
+        DL->>SRC: Read the source's primary keys
+        alt Source returned no keys but the destination has rows
+            Note over DL: Skip. Never treat an empty read<br/>as a full-table delete
+        else
+            DL->>DEST: Soft: flag is_delete and deleted_at<br/>Hard: remove the row
+            DL->>LB: Stamp deletes_checked_at
         end
-
-        UC-->>DL: Chunk written
-
-        DL->>DL: Track current_max = chunk_end
-
-        Note over DL: If error occurs here,<br/>save progress for resume
     end
-
-    Note over DL: All chunks complete
-
-    DL->>Lakebase: UPDATE table_control<br/>SET incremental_value = 10000000<br/>SET load_strategy = 'incremental'
-
-    Note over DL: Future loads use<br/>incremental strategy
 ```
+
+The lookback and the cap exist because the naive version loses rows: late commits fall below the
+cursor, and one bad future timestamp moves the cursor past everything behind it.
 
 ---
 
-## 5. Timeout Handling
-
-Sequence showing how stuck jobs are detected and handled.
+## 4. A chunked backfill
 
 ```mermaid
 sequenceDiagram
+    participant LB as Lakebase
+    participant DL as DataLoader
+    participant SRC as Source DB
+    participant DEST as Destination
+
+    DL->>LB: Read the control row (strict: raise on failure)
+    Note over DL: Starting over on a half-loaded table<br/>is worse than failing
+
+    DL->>SRC: MIN and MAX of the chunk column
+    Note over DL: Numeric partition column if there is one<br/>(indexed range), else the incremental column
+
+    alt A mark exists and the destination exists
+        Note over DL: Resume: continue from the mark
+        DL->>DEST: DELETE rows at or above the mark
+    else No destination table
+        Note over DL: Mark ignored, start from source MIN,<br/>first chunk overwrites
+    else Mark is at or past source MAX
+        Note over DL: Nothing to do, hand over now
+    end
+
+    loop Each chunk, [start, end)
+        DL->>SRC: Read the chunk over parallel connections
+        alt First chunk of a fresh start
+            DL->>DEST: Overwrite
+        else
+            DL->>DEST: Append
+        end
+        DL->>LB: Record this chunk's upper bound
+    end
+
+    DL->>DEST: COUNT(*) against the catalog row estimate
+    Note over DL: Warn above a 5 percent gap
+
+    DL->>LB: Switch strategy to incremental,<br/>set the cursor, clear backfill_cursor,<br/>write bounds and partitions
+    DL->>LB: History entry, change_source = backfill_complete
+```
+
+A backfill runs alone, one per source database, with a 24 hour job timeout. The destination is
+partial while it runs, because the first chunk replaces the table.
+
+---
+
+## 5. Timeouts and stuck rows
+
+```mermaid
+sequenceDiagram
+    participant LB as Lakebase
     participant LQM as longqueued_monitor
     participant LRM as longrunning_monitor
-    participant Lakebase as Lakebase DB
-    participant Dagster as Dagster Instance
-    participant DBX as Databricks
+    participant RM as reconcile_monitor
+    participant DG as Dagster
 
-    Note over LQM: Runs every 10 minutes<br/>Threshold: 60 minutes queued
+    Note over LQM: Every 10 minutes
+    LQM->>LB: Rows Queued longer than 60 minutes
+    LQM->>LB: Mark Failed<br/>"Cancelled: queued for N minutes"
+    Note over LQM: Corrects the row only. Does not<br/>terminate any run.
 
-    LQM->>Lakebase: SELECT * FROM table_control<br/>WHERE status='Queued'<br/>AND last_status_date_time < NOW() - 60 min
-    Lakebase-->>LQM: Return stuck queued tables
+    Note over LRM: Every 10 minutes, two phases
+    LRM->>DG: Runs where Databricks finished but the<br/>Pipes signal never arrived, older than 20 min
+    LRM->>DG: Terminate them
+    LRM->>LB: Rows In Progress past 180 minutes
+    LRM->>DG: Terminate the run
+    LRM->>LB: Mark Failed
 
-    loop For each stuck queued table
-        LQM->>Lakebase: UPDATE status='Failed'<br/>SET error_message='Cancelled - stuck in queue'
-        LQM->>Lakebase: UPDATE historical_metadata<br/>SET load_status='Cancelled'
-    end
-
-    Note over LRM: Runs every 10 minutes<br/>Threshold: 180 minutes running
-
-    LRM->>Lakebase: SELECT * FROM table_control<br/>WHERE status='In Progress'<br/>AND last_load_date_time < NOW() - 180 min
-    Lakebase-->>LRM: Return stuck running tables
-
-    loop For each stuck running table
-        LRM->>Lakebase: Extract dagster_run_id from URL
-        LRM->>Dagster: instance.run_coordinator.cancel_run(run_id)
-        Dagster->>DBX: Terminate job
-
-        LRM->>Lakebase: UPDATE status='Failed'<br/>SET error_message='Cancelled - exceeded timeout'
-        LRM->>Lakebase: UPDATE historical_metadata<br/>SET load_status='Cancelled'
+    Note over RM: Every 10 minutes
+    RM->>LB: Rows In Progress past 20 minutes
+    RM->>DG: Is the recorded run still going?
+    alt Run is missing or finished
+        RM->>LB: Mark Failed
+        RM->>LB: Close the open history row
     end
 ```
 
 ---
 
-## Related Documentation
+## Related documentation
 
-- [Architecture Diagrams](02-architecture.md) - Component and flow diagrams
-- [Dagster Orchestration](../reference/03-dagster-orchestration.md) - Sensor details
-- [Load Strategies](../reference/05-load-strategies.md) - Strategy configuration
-- [Troubleshooting](../reference/06-troubleshooting.md) - Debugging failed loads
+- [Architecture Diagrams](02-architecture.md)
+- [Dagster Orchestration](../reference/03-dagster-orchestration.md)
+- [Load Strategies](../reference/05-load-strategies.md)
+- [Troubleshooting](../reference/06-troubleshooting.md)

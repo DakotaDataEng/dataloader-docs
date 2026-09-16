@@ -1,386 +1,282 @@
 # Architecture Diagrams
 
-Detailed Mermaid diagrams showing DataLoader system architecture.
+Mermaid diagrams of the DataLoader system. Checked against `dbx-data@dev`.
 
 ---
 
-## 1. System Context Diagram
+## 1. System context
 
-Shows the DataLoader system boundary and external interactions.
+The system boundary and what it talks to.
 
 ```mermaid
 flowchart TB
-    subgraph External["External Systems"]
-        Sources["Source Databases<br/>(SQL Server, Oracle,<br/>PostgreSQL, Snowflake,<br/>ClickHouse)"]
-        KeyVault["Azure Key Vault<br/>(Secrets)"]
-        Users["Data Engineers<br/>(Configuration)"]
+    subgraph External["External"]
+        Sources["Source databases<br/>SQL Server, Oracle, PostgreSQL,<br/>Snowflake, ClickHouse, S3 Iceberg"]
+        KeyVault["Azure Key Vault<br/>secrets"]
+        Users["Data engineers"]
     end
 
-    subgraph DataLoader["DataLoader System"]
-        Lakebase["Lakebase<br/>Control Database"]
-        Dagster["Dagster<br/>Orchestration"]
-        Databricks["Databricks<br/>Execution"]
+    subgraph System["DataLoader"]
+        App["dl-app<br/>Databricks App"]
+        Lakebase["Lakebase<br/>control database"]
+        Dagster["Dagster<br/>orchestration"]
+        Databricks["Databricks<br/>execution"]
     end
 
-    subgraph Destination["Data Platform"]
-        Unity["Unity Catalog<br/>(Bronze Layer)"]
+    subgraph Dest["Data platform"]
+        Unity["Unity Catalog<br/>bronze layer"]
     end
 
-    Users -->|Configure tables| Lakebase
-    Lakebase <-->|Config & Status| Dagster
-    Dagster -->|Trigger jobs| Databricks
-    Sources -->|JDBC/Native| Databricks
+    Users -->|Configure| App
+    App <-->|Read and write config| Lakebase
+    App -.->|One-off runs:<br/>test, crawl, preview| Databricks
+    App <-->|Manage secret names| KeyVault
+    Lakebase <-->|Ready tables, status| Dagster
+    Dagster -->|One job per batch| Databricks
+    Sources -->|JDBC or native| Databricks
     KeyVault -->|Credentials| Databricks
-    Databricks -->|Write data| Unity
-    Databricks -.->|Status updates| Lakebase
+    Databricks -->|Write Delta| Unity
+    Databricks -.->|Per-table status| Lakebase
 ```
 
 ---
 
-## 2. Component Diagram
-
-Shows all internal components and their relationships.
+## 2. Components
 
 ```mermaid
 flowchart TB
-    subgraph Lakebase["Lakebase PostgreSQL"]
-        TC["table_control<br/>─────────────<br/>config_id, control_key<br/>source/destination tables<br/>load_strategy, cron<br/>last_status, incremental_value"]
-        TCDB["table_control_dbconfig<br/>─────────────<br/>db_config_key<br/>db_type, db_config_value<br/>db_kv_scope"]
-        HM["historical_metadata<br/>─────────────<br/>control_key, run_id<br/>load_queued/start/end_time<br/>rows_processed, load_status"]
-        TCH["table_control_history<br/>─────────────<br/>control_key, changed_at<br/>change_type, change_source<br/>old_values, new_values"]
-
-        TCDB --> TC
-        TC --> HM
-        TC --> TCH
-    end
-
-    subgraph Dagster["Dagster"]
-        subgraph Sensors["Sensors"]
-            MS["master_sensor<br/>(60s interval)"]
-            LQM["longqueued_monitor<br/>(10min, 60min threshold)"]
-            LRM["longrunning_monitor<br/>(10min, 180min threshold)"]
-            FM["failed_monitor<br/>(15min interval)"]
-            LTM["landing_table_monitor<br/>(30min interval)"]
-        end
-
-        subgraph Assets["Assets"]
-            ATL["dataloader_table_load"]
-            ARA["dataloader_retry_analysis"]
-        end
-
-        MS -->|RunRequest| ATL
-        FM -->|RunRequest| ARA
-    end
-
-    subgraph Databricks["Databricks"]
-        DLP["dataloader_pipe.py"]
-        DL["DataLoader Class<br/>─────────────<br/>process_tables()<br/>load_table_from_source()<br/>write_to_unity_catalog()"]
-        DRP["dataloader_retry_pipe.py"]
-
-        DLP --> DL
-    end
-
-    TC <-->|Query/Update| MS
-    TC <-->|Query/Update| LQM
-    TC <-->|Query/Update| LRM
-    TC <-->|Query/Update| FM
-    TC <-->|Query| LTM
-
-    ATL -->|Pipes| DLP
-    ARA -->|Pipes| DRP
-
-    DL -.->|Status| HM
-```
-
----
-
-## 3. Data Flow Diagram
-
-Shows how data and control signals flow through the system.
-
-```mermaid
-flowchart TB
-    subgraph Config["Configuration"]
-        SQL["SQL / dl-app UI"]
-    end
-
-    subgraph Control["Control Plane"]
-        TCDB["dbconfig"]
+    subgraph LB["Lakebase (control)"]
         TC["table_control"]
+        VW["dataloader_control_vw"]
+        DBC["table_control_dbconfig"]
         HM["historical_metadata"]
-        TCDB -->|Connection config| TC
+        TCH["table_control_history"]
+        SC["source_catalog<br/>source_catalog_crawl"]
+        RR["dagster_reload_request"]
     end
 
-    subgraph Orchestration["Orchestration"]
-        Sensor["master_sensor (every 60s)"]
-        Asset["dataloader_table_load"]
-        Sensor -->|RunRequest| Asset
+    subgraph DG["Dagster"]
+        MS["dataloader_master_sensor<br/>60s"]
+        LQM["longqueued_monitor"]
+        LRM["longrunning_monitor"]
+        FM["failed_monitor"]
+        RM["reconcile_monitor"]
+        RS["run_canceled<br/>run_failed"]
+        RLS["dagster_reload_sensor"]
+        ATL["dataloader_table_load<br/>batch asset"]
+        ARA["dataloader_retry_analysis"]
     end
 
-    subgraph Execution["Execution"]
-        Pipes["Dagster Pipes"]
-        DL["DataLoader"]
-        Pipes -->|Execute| DL
+    subgraph DBX["Databricks"]
+        PIPE["dataloader_pipe.py"]
+        DL["DataLoader<br/>process_tables()<br/>write_table_to_unity()"]
     end
 
-    subgraph Sources["Source DBs"]
-        direction LR
-        MSSQL["SQL Server"] ~~~ Oracle["Oracle"] ~~~ PG["PostgreSQL"] ~~~ SF["Snowflake"] ~~~ CH["ClickHouse"]
-    end
+    UC["Unity Catalog<br/>bronze"]
 
-    subgraph Destination["Destination"]
-        UC["Unity Catalog (Bronze)"]
-    end
+    TC --> VW
+    DBC --> VW
+    VW -->|Ready tables| MS
+    MS -->|1 RunRequest per batch<br/>up to 12 tables| ATL
+    MS -->|Batch insert| HM
+    MS -->|Batch queue| TC
+    ATL -->|In Progress, run URL| TC
+    ATL -->|Pipes| PIPE
+    PIPE --> DL
+    DL --> UC
+    PIPE -->|Per-table outcome<br/>as each finishes| TC
+    PIPE -->|Close each row| HM
+    ATL -->|1 materialization per table| UC
 
-    SQL -->|INSERT/UPDATE| TC
-    TC -->|Ready tables| Sensor
-    Asset -->|Submit job| Pipes
-    Sources -->|JDBC/Native| DL
-    DL -->|Write| UC
-    DL -.->|rows, status| HM
-    DL -.->|incremental_value| TC
+    TC --> LQM
+    TC --> LRM
+    TC --> FM
+    TC --> RM
+    LQM -->|Failed| TC
+    LRM -->|Terminate, then Failed| TC
+    RM -->|Failed, close history| TC
+    RS -->|Fail non-terminal rows| TC
+    FM --> ARA
+    ARA -->|Reset or flag| TC
 
-    style Sources fill:#4A90A4
-    style Destination fill:#2E8B57
-    style Control fill:#6B8E23
-    style Orchestration fill:#9370DB
-    style Execution fill:#FF6B35
+    TC -.->|Trigger on insert,<br/>delete, destination change| RR
+    RR --> RLS
+    TC --> TCH
 ```
+
+`write_to_unity_catalog()` does not exist; the method is `write_table_to_unity()`.
 
 ---
 
-## 4. Sensor Orchestration Diagram
-
-Shows all 5 sensors and their responsibilities.
-
-```mermaid
-flowchart TB
-    subgraph Sensors["Dagster Sensors"]
-        MS["master_sensor<br/>───────────<br/>Interval: 60 seconds<br/>Batch: 10 tables/tick"]
-        LQM["longqueued_monitor<br/>───────────<br/>Interval: 10 minutes<br/>Threshold: 60 min queued"]
-        LRM["longrunning_monitor<br/>───────────<br/>Interval: 10 minutes<br/>Threshold: 180 min running"]
-        FM["failed_monitor<br/>───────────<br/>Interval: 15 minutes<br/>Max retries: 3"]
-        LTM["landing_table_monitor<br/>───────────<br/>Interval: 30 minutes<br/>Creates schema files"]
-    end
-
-    subgraph TableStates["Table States"]
-        Ready["Ready<br/>(is_active=true,<br/>next_load_date_time <= NOW,<br/>status NOT Queued/In Progress)"]
-        Queued["Queued"]
-        InProgress["In Progress"]
-        Succeeded["Succeeded"]
-        Failed["Failed"]
-    end
-
-    subgraph Actions["Actions"]
-        TriggerLoad["Trigger<br/>dataloader_table_load"]
-        CancelQueued["Mark Failed<br/>(cancelled - stuck in queue)"]
-        CancelRunning["Cancel Dagster Run<br/>Mark Failed"]
-        AIAnalysis["Trigger<br/>dataloader_retry_analysis"]
-        GitJob["Trigger<br/>landing_table_git_job"]
-    end
-
-    MS -->|Query| Ready
-    Ready -->|yield RunRequest| TriggerLoad
-    TriggerLoad --> Queued
-    Queued --> InProgress
-    InProgress --> Succeeded
-    InProgress --> Failed
-
-    LQM -->|Query status=Queued > 60min| Queued
-    LQM --> CancelQueued
-    CancelQueued --> Failed
-
-    LRM -->|Query status=In Progress > 180min| InProgress
-    LRM --> CancelRunning
-    CancelRunning --> Failed
-
-    FM -->|Query status=Failed, retry_count < 3| Failed
-    FM --> AIAnalysis
-    AIAnalysis -->|Retry| Ready
-    AIAnalysis -->|Manual Review| Failed
-
-    LTM -->|Query staging_model_processed=false| Succeeded
-    LTM --> GitJob
-```
-
----
-
-## 5. Load Strategy State Machine
-
-Shows the 6 load strategies and their behaviors.
-
-```mermaid
-stateDiagram-v2
-    [*] --> ConfigureStrategy: Define table in table_control
-
-    state ConfigureStrategy {
-        [*] --> SelectStrategy
-        SelectStrategy --> full: Small tables, no tracking
-        SelectStrategy --> incremental: Large tables, timestamp/ID tracking
-        SelectStrategy --> append_only: Immutable data, logs
-        SelectStrategy --> rolling: Time-windowed data
-        SelectStrategy --> check_and_load: Conditional loading
-        SelectStrategy --> chunked_backfill: Large initial loads
-    }
-
-    state full {
-        f1: Truncate destination
-        f2: Load all rows from source
-        f3: Write with overwrite mode
-        f1 --> f2
-        f2 --> f3
-    }
-
-    state incremental {
-        i1: Query last incremental_value
-        i2: Filter WHERE col > last_value
-        i3: Merge upsert by primary keys
-        i4: Update incremental_value
-        i1 --> i2
-        i2 --> i3
-        i3 --> i4
-    }
-
-    state append_only {
-        a1: Query last incremental_value
-        a2: Filter WHERE col > last_value
-        a3: Append (no merge)
-        a4: Update incremental_value
-        a1 --> a2
-        a2 --> a3
-        a3 --> a4
-    }
-
-    state rolling {
-        r1: Calculate window (today - N days)
-        r2: Filter by rolling_column
-        r3: Merge + delete outside window
-        r1 --> r2
-        r2 --> r3
-    }
-
-    state check_and_load {
-        c1: Query COUNT(*) of changes
-        c2: If count > 0, execute incremental
-        c3: If count = 0, skip load
-        c1 --> c2
-        c1 --> c3
-    }
-
-    state chunked_backfill {
-        cb1: Query source MIN/MAX
-        cb2: Calculate chunk boundaries
-        cb3: Process chunks sequentially
-        cb4: First chunk - overwrite
-        cb5: Subsequent chunks - append
-        cb6: Update incremental_value at end
-        cb1 --> cb2
-        cb2 --> cb3
-        cb3 --> cb4
-        cb4 --> cb5
-        cb5 --> cb6
-    }
-
-    chunked_backfill --> incremental: After backfill complete,<br/>switch to incremental
-
-    full --> [*]: Load complete
-    incremental --> [*]: Load complete
-    append_only --> [*]: Load complete
-    rolling --> [*]: Load complete
-    check_and_load --> [*]: Load complete
-    chunked_backfill --> [*]: Load complete
-```
-
----
-
-## 6. Status Lifecycle
-
-Shows table status transitions during execution.
-
-```mermaid
-stateDiagram-v2
-    [*] --> NULL: Table created
-
-    NULL --> Queued: master_sensor<br/>picks up ready table
-
-    Queued --> InProgress: Asset execution starts
-    Queued --> Failed: Stuck > 60min<br/>(longqueued_monitor)
-
-    InProgress --> Succeeded: DataLoader completes
-    InProgress --> Failed: Error during load
-    InProgress --> Failed: Stuck > 180min<br/>(longrunning_monitor)
-
-    Succeeded --> NULL: Next cron trigger
-
-    Failed --> NULL: AI retry recommended
-    Failed --> Failed: AI manual review
-
-    state Queued {
-        [*] --> WaitingForAsset
-        WaitingForAsset: historical_metadata created
-        WaitingForAsset: load_queued_time set
-    }
-
-    state InProgress {
-        [*] --> Executing
-        Executing: DataLoader.process_tables()
-        Executing: load_start_time set
-    }
-
-    state Succeeded {
-        [*] --> Complete
-        Complete: rows_processed logged
-        Complete: load_end_time set
-        Complete: incremental_value updated
-    }
-
-    state Failed {
-        [*] --> ErrorLogged
-        ErrorLogged: last_status_message set
-        ErrorLogged: retry_count incremented
-    }
-```
-
----
-
-## 7. Database Connection Flow
-
-Shows how credentials are resolved and connections established.
+## 3. Data flow
 
 ```mermaid
 flowchart LR
-    subgraph Config["table_control_dbconfig"]
-        DBConfig["db_config_value (JSONB)<br/>───────────<br/>{host: 'kv-secret-name',<br/>port: 'kv-port-name',<br/>user: 'kv-user-name',<br/>password: 'kv-pass-name'}"]
-        Scope["db_kv_scope<br/>'azure-keyvault'"]
-    end
+    Src[(Source<br/>database)]
+    KV[Key Vault]
+    LB[(Lakebase)]
+    Sensor[master_sensor]
+    Asset[batch asset]
+    Job[Databricks job]
+    Loader[DataLoader]
+    Stage[(stage table)]
+    Dest[(Unity Catalog<br/>bronze)]
 
-    subgraph KeyVault["Azure Key Vault"]
-        Secrets["Actual credentials"]
-    end
-
-    subgraph Databricks["Databricks Runtime"]
-        DBUtils["dbutils.secrets.get()"]
-        Resolved["database_config dict<br/>───────────<br/>{host: 'actual-host.com',<br/>port: '1433',<br/>user: 'dataloader',<br/>password: '***'}"]
-    end
-
-    subgraph DataLoader["DataLoader Class"]
-        ConnStr["set_connection_string()"]
-        JDBC["JDBC URL or<br/>Snowflake native config"]
-    end
-
-    DBConfig --> DBUtils
-    Scope --> DBUtils
-    DBUtils --> KeyVault
-    KeyVault --> Resolved
-    Resolved --> ConnStr
-    ConnStr --> JDBC
+    LB -->|Due tables| Sensor
+    Sensor -->|Batch of up to 12<br/>sharing one database| Asset
+    Asset -->|Submit| Job
+    KV -->|Secrets| Job
+    Job --> Loader
+    Src -->|Windowed read over<br/>parallel JDBC connections| Loader
+    Loader -->|Merge strategies| Stage
+    Stage -->|Delta MERGE| Dest
+    Loader -->|Full and append| Dest
+    Loader -->|Status and cursor,<br/>per table| LB
 ```
 
 ---
 
-## Related Documentation
+## 4. Sensors
 
-- [Sequence Diagrams](03-sequence-diagrams.md) - Step-by-step operation flows
-- [Lakebase Reference](../reference/02-lakebase-control-database.md) - Control table details
-- [Dagster Reference](../reference/03-dagster-orchestration.md) - Sensor and asset details
-- [DataLoader Reference](../reference/04-dataloader-class.md) - Class methods and database support
+Eight sensors and one schedule. Four ship stopped.
+
+```mermaid
+flowchart TB
+    subgraph Work["Starting work"]
+        MS["master_sensor<br/>60s, STOPPED by default<br/>up to 48 tables per tick<br/>runs of up to 12"]
+    end
+
+    subgraph Recover["Recovering stuck work"]
+        LQM["longqueued_monitor<br/>10 min, STOPPED<br/>Queued &gt; 60 min"]
+        LRM["longrunning_monitor<br/>10 min, STOPPED<br/>orphans &gt; 20 min,<br/>running &gt; 180 min"]
+        RM["reconcile_monitor<br/>10 min, running<br/>In Progress &gt; 20 min<br/>and the run is gone"]
+        RS["run_canceled / run_failed<br/>event driven, running"]
+    end
+
+    subgraph Retry["Retrying"]
+        FM["failed_monitor<br/>15 min, STOPPED<br/>retry_count &lt; 3"]
+        ARA["retry_analysis asset"]
+    end
+
+    subgraph Housekeeping["Housekeeping"]
+        RLS["dagster_reload_sensor<br/>5 min, running"]
+        ILS["ingestion_logs_schedule<br/>hourly, running"]
+    end
+
+    MS -->|RunRequest per batch| Load["dataloader_table_load"]
+    Load --> Outcome{"Batch outcome"}
+    Outcome -->|all ok| Succ["Succeeded"]
+    Outcome -->|some ok| Part["Partial<br/>run fails, loaded tables<br/>keep Succeeded"]
+    Outcome -->|none ok| Fail["Failed"]
+
+    LQM --> Fail
+    LRM --> Fail
+    RM --> Fail
+    RS --> Fail
+    Fail --> FM
+    FM --> ARA
+```
+
+---
+
+## 5. Load strategy state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Configured
+
+    Configured --> Full: strategy = full
+    Configured --> Incremental: strategy = incremental
+    Configured --> AppendOnly: strategy = append_only
+    Configured --> Rolling: strategy = rolling
+    Configured --> CheckAndLoad: strategy = check_and_load
+    Configured --> Backfill: strategy = chunked_backfill
+
+    Full --> Full: One atomic overwrite each run
+
+    Incremental --> Incremental: Window above cursor minus lookback, then merge
+    AppendOnly --> AppendOnly: Window above cursor, no lookback, append
+    Rolling --> Rolling: Last N days, merge, remove vanished rows inside the window
+
+    CheckAndLoad --> CheckAndLoad: Count first
+    CheckAndLoad --> Skipped: No changes
+    Skipped --> CheckAndLoad: Next run
+
+    Backfill --> Backfill: Next chunk, progress recorded
+    Backfill --> Resumed: Run interrupted
+    Resumed --> Backfill: Continue from the mark,<br/>delete rows at or above it
+    Backfill --> Incremental: Last chunk done,<br/>hand over with a cursor
+```
+
+A forced full reload (`load_full`) bypasses the window on incremental, append_only and rolling,
+because the write overwrites the destination.
+
+---
+
+## 6. Status lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Null: Row created
+
+    Null --> Queued: Sensor selects it
+    Succeeded --> Queued: Next cron, once due
+    Queued --> InProgress: Asset marks the batch before submitting
+    InProgress --> Succeeded: Table loaded
+    InProgress --> Failed: Table raised
+    InProgress --> Failed: Loader reported nothing for it
+    InProgress --> Failed: Batch died
+    InProgress --> Failed: Run canceled or failed
+    InProgress --> Failed: Reconcile monitor, run gone after 20 min
+    InProgress --> Failed: Longrunning monitor after 180 min
+    Queued --> Failed: Longqueued monitor after 60 min
+
+    Failed --> Null: Reset, by hand or by retry analysis
+    Failed --> Review: Flagged after 3 retries
+
+    note right of Succeeded
+        Stays Succeeded. next_load_date_time
+        advances from the cron. Only a reset
+        writes NULL.
+    end note
+```
+
+A row only re-qualifies for a run when `last_status` is NULL or `Succeeded`. A row left at `Failed`
+never runs again until something resets it.
+
+---
+
+## 7. Connection resolution
+
+```mermaid
+flowchart TB
+    Row["table_control_dbconfig row"]
+    Bundle["secret_bundle<br/>one secret holding JSON"]
+    Fields["Per-field secret names<br/>host, port, service_name,<br/>user, password"]
+    KV[(Azure Key Vault)]
+    Merged["Resolved config"]
+    Suffix["connections.py<br/>login and socket timeouts,<br/>application name"]
+    Props["Driver properties<br/>Oracle"]
+    Init["sessionInitStatement<br/>if configured"]
+    JDBC["JDBC URL or native options"]
+
+    Row --> Bundle
+    Row --> Fields
+    Bundle -->|Read first| KV
+    Fields -->|Override the bundle| KV
+    KV --> Merged
+    Merged --> Suffix
+    Suffix --> Props
+    Props --> Init
+    Init --> JDBC
+```
+
+Per-field secrets override the bundle, so one field can be rotated without rewriting the bundle.
+
+---
+
+## Related documentation
+
+- [System Overview](../reference/01-system-overview.md)
+- [Dagster Orchestration](../reference/03-dagster-orchestration.md)
+- [Sequence Diagrams](03-sequence-diagrams.md)

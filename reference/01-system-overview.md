@@ -2,234 +2,234 @@
 
 ## What is DataLoader?
 
-DataLoader is a production data orchestration system that loads data from source databases into a Databricks Unity Catalog. It provides:
+DataLoader moves data from source databases into the Databricks Unity Catalog bronze layer. What
+loads, how, and on what schedule is configuration in a Postgres database, not code. Adding a table
+is a row, not a deployment.
 
-- **Multi-database connectivity**: SQL Server, Oracle, PostgreSQL, Snowflake, ClickHouse
-- **Flexible load strategies**: Full, incremental, append-only, rolling window, and chunked backfill
-- **Automated orchestration**: Sensor-based scheduling via Dagster
-- **Fault tolerance**: Automatic retry analysis and timeout monitoring
-- **Execution tracking**: Complete audit trail of all data loads
+- **Seven source types**: SQL Server, Oracle, PostgreSQL, Snowflake, Snowflake with key-pair auth,
+  ClickHouse, S3 Iceberg
+- **Six load strategies**: full, incremental, append-only, rolling window, check-and-load, chunked
+  backfill
+- **Scheduled by sensors**, not by a static DAG. A table becomes due, the sensor picks it up
+- **Self-correcting**: four separate mechanisms catch a load that dies without reporting
+- **Audited**: every run and every configuration change is recorded
 
 ---
 
-## Key Concepts
+## Key concepts
 
-### Control Plane vs Data Plane
+### Control plane and data plane
 
-DataLoader separates configuration from execution:
+Configuration is separate from execution. The control plane holds intent and state; the data plane
+does the work and reports back.
 
 | Plane | Component | Responsibility |
-|-------|-----------|----------------|
-| **Control Plane** | Lakebase | Stores what to load, when, and how |
-| **Orchestration** | Dagster | Monitors control plane, triggers jobs |
-| **Data Plane** | Databricks | Executes loads, moves actual data |
-| **Destination** | Unity Catalog | Stores loaded data in bronze layer |
+|---|---|---|
+| Control | Lakebase (Postgres) | What to load, how, when, and what happened last time |
+| Orchestration | Dagster | Watches the control plane, batches the work, starts runs |
+| Data | Databricks | Reads the source, writes Delta tables |
+| Destination | Unity Catalog | Holds the loaded data in the bronze layer |
+| Interface | dl-app | The web app people use to manage all of it |
 
-### Sensor-Driven Architecture
+### Sensors, not a schedule
 
-Rather than scheduled jobs, DataLoader uses **sensors** that continuously poll for work:
+There is no static DAG of tables. Every 60 seconds the master sensor asks the control database which
+tables are due, and starts runs for them. A table's `load_cron` sets when it becomes due;
+`next_load_date_time` records when that is next.
 
-1. Sensors query Lakebase every 60 seconds
-2. Find tables where `next_load_date_time <= NOW()`
-3. Yield RunRequests for each ready table
-4. Jobs execute in parallel on Databricks
+The practical consequence: adding a table to the system is an INSERT. Nothing is deployed, and the
+code location reloads itself so the new table shows up as an asset.
 
-### Incremental Value Tracking
+### Loads are batched
 
-For incremental loads, DataLoader tracks the last processed value:
+One Dagster run loads **up to twelve tables**, not one. The sensor groups the tables that are due by
+source database and forced-reload flag, and each run builds one `DataLoader` that loads its tables
+on parallel threads.
 
-1. Before load: Query `incremental_value` from `table_control`
-2. During load: Filter `WHERE column > incremental_value`
-3. After load: Update `incremental_value` with `MAX(column)` from destination
+This matters for reading anything else in these docs: a run is not a table. Outcomes are recorded
+per table as each one finishes, so one bad table in a batch does not fail the other eleven. See
+[Dagster Orchestration](03-dagster-orchestration.md) for the full flow.
+
+### Cursor tracking
+
+For incremental strategies the loader keeps a high-water mark in `incremental_value`.
+
+1. Read the cursor from the control row at load time.
+2. Filter the source above the cursor, **minus a lookback window** so rows that committed late are
+   not missed.
+3. After the load, set the cursor from what was actually loaded, **capped at the moment the source
+   was read** so a future-dated row cannot skip everything behind it.
+
+The lookback and the cap are both there because the naive version loses data. See
+[Load Strategies](05-load-strategies.md).
 
 ---
 
-## System Components
+## System components
 
-### 1. Lakebase (Control Database)
+### 1. Lakebase, the control database
 
-PostgreSQL database storing all configuration and state.
+Postgres. Holds configuration and state.
 
 | Table | Purpose |
-|-------|---------|
-| `table_control` | What tables to load, how, and when |
-| `table_control_dbconfig` | Database connection configurations |
-| `historical_metadata` | Execution history and metrics |
+|---|---|
+| `table_control` | One row per table: source, destination, strategy, schedule, cursor, status |
+| `table_control_dbconfig` | One row per source database, with Key Vault secret names |
+| `historical_metadata` | One row per table per run: timings, row counts, outcome |
 | `table_control_history` | Audit trail of configuration changes |
+| `source_catalog` | Cached picture of a source's tables, columns, keys and indexes |
+| `source_catalog_crawl` | State of each database's most recent catalog crawl |
+| `dagster_reload_request` | Queue telling Dagster to reload its code location |
+| `dataloader_control_vw` | The view the sensor reads to find ready tables |
 
-**Environments**:
-- Production: `dataloader` database
-- Pre-production: `dataloader_test` database
+Two databases: `dataloader` (production) and `dataloader_test` (pre-production). The app switches
+between them with the TEST and PROD buttons in the header.
 
-### 2. Dagster (Orchestration)
+### 2. Dagster, the orchestrator
 
-Dagster deployment with sensors and assets.
+Self-hosted on the `linux-dagster` VM. Eight sensors, one schedule, four assets.
 
-**Sensors** (5 total):
 | Sensor | Interval | Purpose |
-|--------|----------|---------|
-| `master_sensor` | 60s | Trigger table loads |
-| `longqueued_monitor` | 10min | Cancel stuck queued jobs (>60min) |
-| `longrunning_monitor` | 10min | Cancel stuck running jobs (>180min) |
-| `failed_monitor` | 15min | AI retry analysis for failures |
-| `landing_table_monitor` | 30min | Generate schema files for new tables |
+|---|---|---|
+| `dataloader_master_sensor` | 60s | Find ready tables, batch them, start runs |
+| `dataloader_longqueued_monitor` | 10 min | Fail rows stuck `Queued` past 60 minutes |
+| `dataloader_longrunning_monitor` | 10 min | Terminate orphaned and overlong runs |
+| `dataloader_failed_monitor` | 15 min | AI retry analysis on failures |
+| `dataloader_reconcile_monitor` | 10 min | Fail rows whose run is gone, close orphaned history |
+| `dataloader_run_canceled` | event | Fail non-terminal rows of a canceled run |
+| `dataloader_run_failed` | event | Fail non-terminal rows of a failed run |
+| `dagster_reload_sensor` | 5 min | Reload the code location when tables change |
 
-**Assets** (2 total):
-| Asset | Triggered By | Purpose |
-|-------|--------------|---------|
-| `dataloader_table_load` | master_sensor | Execute data load |
-| `dataloader_retry_analysis` | failed_monitor | Analyze failures, recommend retry |
+Four of these ship stopped and must be enabled after a fresh deployment. See
+[Dagster Orchestration](03-dagster-orchestration.md).
 
-### 3. Databricks (Execution Engine)
+### 3. Databricks, the execution engine
 
-Spark-based execution environment.
+Dagster submits one job run per batch through Dagster Pipes. The job runs
+`dbx/notebooks/dataloader/dataloader_pipe.py`, which resolves secrets from Key Vault, builds one
+`DataLoader`, and loads the batch on twelve threads while reporting each table's outcome back as it
+lands.
 
-**Components**:
-- **DataLoader class**: Core loading logic (`dbx/functions/dataloader.py`)
-- **Pipes scripts**: Dagster integration (`dbx/notebooks/dataloader/`)
-- **Azure Key Vault**: Secrets management for database credentials
+### 4. Unity Catalog, the destination
 
-**Execution model**:
-- Dagster Pipes submits tasks to Databricks
-- DataLoader class executes with Spark JDBC/native connectors
-- Bidirectional communication reports progress back to Dagster
+Delta tables in the bronze layer. Every destination gets deletion vectors, optimized writes and auto
+compaction; tables that merge on a key also get liquid clustering on that key.
 
-### 4. Unity Catalog (Destination)
+### 5. dl-app, the interface
 
-Databricks Unity Catalog for data governance.
-
-**Structure**:
-- **Catalog**: Typically `bronze` for raw ingested data
-- **Schema**: Organized by source system or domain
-- **Tables**: Delta format with schema evolution
+A Flask app deployed as a Databricks App. It is the thing most people actually touch: configure
+databases and tables, watch loads, crawl a source's catalog, promote configuration from test to
+production, and manage the Key Vault secrets behind it all. See
+[Control Manager UI](07-control-manager-ui.md).
 
 ---
 
-## End-to-End Data Flow
+## End to end
 
 ```
-1. Configuration
-   └── User defines table in Lakebase (via SQL or UI)
-       ├── Source: schema.table
-       ├── Destination: catalog.schema.table
-       ├── Strategy: incremental
-       └── Schedule: 0 2 * * * (daily at 2 AM)
+1. Configure
+   A row in table_control: source, destination, strategy, schedule.
+   Usually created in dl-app, often in bulk from a crawled source catalog.
 
-2. Scheduling
-   └── master_sensor runs every 60 seconds
-       ├── Queries Lakebase for ready tables
-       ├── Filters: is_active=true, next_load_date_time <= NOW
-       └── Yields RunRequest for each table
+2. Become due
+   next_load_date_time passes. The table appears in dataloader_control_vw.
 
-3. Orchestration
-   └── Dagster materializes dataloader_table_load asset
-       ├── Updates status to 'In Progress'
-       ├── Submits Databricks task via Pipes
-       └── Waits for completion
+3. Batch
+   master_sensor takes up to 48 tables in due order, gates backfills to one per
+   database, groups the rest by (database, full-load flag) into runs of up to 12.
+   One history row per table. Every table marked Queued.
 
-4. Execution
-   └── dataloader_pipe.py runs on Databricks
-       ├── Loads credentials from Key Vault
-       ├── Initializes DataLoader class
-       ├── Queries last incremental_value
-       └── Builds filtered query
+4. Start
+   One Dagster run per group. The asset marks every table In Progress with the run
+   URL, then submits one Databricks job through Pipes.
 
-5. Data Movement
-   └── DataLoader.load_table_from_source()
-       ├── Executes JDBC/native query against source
-       ├── Transforms column names
-       └── Returns Spark DataFrame
+5. Load
+   One DataLoader for the batch. Per table: read the cursor, build the windowed
+   query, read the source over parallel JDBC connections, write Delta.
 
-6. Write to Destination
-   └── DataLoader.write_to_unity_catalog()
-       ├── Creates staging table (for merge)
-       ├── Merges by primary keys (upsert)
-       ├── Drops staging table
-       └── Updates incremental_value
+6. Report, per table, as it finishes
+   Succeeded or Failed with a message, both run URLs, and that table's history row
+   closed. A slow table does not hold up its siblings.
 
-7. Status Update
-   └── Pipes script updates Lakebase
-       ├── status = 'Succeeded'
-       ├── rows_processed = count
-       ├── incremental_value = MAX(column)
-       └── historical_metadata record
+7. Roll up
+   Succeeded, Failed, or Partial. A Partial batch fails the Dagster run for
+   alerting while the tables that loaded keep their status. Tables the loader never
+   reported on are failed explicitly, never left In Progress.
 ```
 
----
-
-## Database Support
-
-| Type | Connection | Driver | Notes |
-|------|------------|--------|-------|
-| `mssql` | JDBC | SQLServerDriver | Azure AD service principal supported |
-| `oracle` | JDBC | OracleDriver | Timezone-aware with date handling |
-| `postgresql` | JDBC | PostgreSQL Driver | Standard JDBC |
-| `snowflake` | Native | Spark connector | Password authentication |
-| `snowflake_pem` | Native | Spark connector | Key-pair authentication |
-| `clickhouse` | JDBC | ClickHouseDriver | HTTP protocol, custom type mapping |
+If something dies between steps 4 and 7, the reconcile monitor and the run status sensors clean up
+the rows that were left behind.
 
 ---
 
-## Load Strategies
+## Database support
 
-| Strategy | Use Case | Behavior |
-|----------|----------|----------|
-| `full` | Small tables, no tracking | Truncate and reload |
-| `incremental` | Large tables with timestamps | Merge by primary key |
-| `append_only` | Immutable event data | Append without deduplication |
-| `rolling` | Time-windowed data | Merge + delete outside window |
-| `check_and_load` | Conditional loading | Only load if changes exist |
-| `chunked_backfill` | Large initial loads | Sequential chunks, then switch to incremental |
+| Type | Connection | Notes |
+|---|---|---|
+| `mssql` | JDBC | Azure AD service principal supported; rowversion usable as a cursor |
+| `oracle` | JDBC | Predicate compares the bare column so indexes are used; smaller fetch size |
+| `postgresql` | JDBC | Standard |
+| `snowflake` | Native connector | Password auth |
+| `snowflake_pem` | Native connector | Key-pair auth |
+| `clickhouse` | JDBC | HTTP protocol, custom type mapping |
+| `s3_iceberg` | Spark and PyIceberg | No JDBC; `check_and_load` and `chunked_backfill` are rejected |
 
-See [Load Strategies Guide](05-load-strategies.md) for detailed configuration.
+Every JDBC source gets a login timeout, a socket timeout and an application name so a hung socket
+cannot hold a worker thread until the job timeout, and so the source's DBAs can see who is
+connecting.
 
 ---
 
-## Quick Reference
+## Load strategies
 
-### File Locations
+| Strategy | Use case | Behavior |
+|---|---|---|
+| `full` | Small tables | One atomic Delta overwrite; no truncate, no gap for readers |
+| `incremental` | Large tables with a change column | Merge on the primary key, windowed above the cursor |
+| `append_only` | Immutable event data | Append above the cursor, no lookback, no dedup |
+| `rolling` | Time-windowed data | Merge, and remove rows that vanished from inside the window |
+| `check_and_load` | Sources that change rarely | Count first; if anything changed, reload the table |
+| `chunked_backfill` | First load of a very large table | Sequential chunks, then hand over to incremental |
 
-| File | Purpose |
-|------|---------|
-| `dbx/functions/dataloader.py` | DataLoader class |
-| `dbx/notebooks/dataloader/dataloader_pipe.py` | Dagster Pipes script |
-| `dagsters/sensors/` | Dagster sensors |
-| `dagsters/assets/dataloader_pipes_asset.py` | Dagster assets |
-| `dagsters/utils/lakebase_client.py` | Lakebase database client |
-| `sql/01_create_tables.sql` | Control table schemas |
+Deletes are a separate per-table option, not a property of the strategy. See
+[Load Strategies](05-load-strategies.md).
 
-### Environment Variables
+---
 
-| Variable | Purpose |
-|----------|---------|
-| `LAKEBASE_HOST` | Lakebase PostgreSQL host |
-| `LAKEBASE_PORT` | Lakebase PostgreSQL port |
-| `LAKEBASE_DATABASE` | Database name |
-| `LAKEBASE_USER` | Database user |
-| `LAKEBASE_PASSWORD` | Database password |
-| `DATABRICKS_CLUSTER_ID` | Target Databricks cluster |
+## Quick reference
+
+### File locations
+
+| Path | Purpose |
+|---|---|
+| `dbx/functions/dataloader.py` | The loader |
+| `dbx/functions/` | Focused modules: batching results, cursors, backfill, quoting, catalog crawl |
+| `dbx/notebooks/dataloader/dataloader_pipe.py` | The Databricks side of a batch |
+| `dagsters/sensors/` | All eight sensors |
+| `dagsters/assets/dataloader_pipes_asset.py` | The batch asset and the retry asset |
+| `dagsters/utils/lakebase_client.py` | Every control table query |
+| `db/migrations/` | dbmate migrations, the source of truth for the schema |
+| `dl-app/` | The web app |
 
 ### Commands
 
 ```bash
-# Type check
-uvx pyrefly check --summarize-errors
-
-# Lint
-uv run ruff check .
-
-# Run Dagster locally
-dagster dev
+uvx pyrefly check --summarize-errors   # type check
+uv run ruff check .                    # lint
+uv run pytest -q                       # tests
+dagster dev                            # run Dagster locally
 ```
 
 ---
 
-## Related Documentation
+## Related documentation
 
-- [Architecture Diagrams](../diagrams/02-architecture.md) - Visual component diagrams
-- [Sequence Diagrams](../diagrams/03-sequence-diagrams.md) - Operation flows
-- [Lakebase Reference](02-lakebase-control-database.md) - Control table details
-- [Dagster Reference](03-dagster-orchestration.md) - Sensor and asset details
-- [DataLoader Reference](04-dataloader-class.md) - Class methods
-- [Load Strategies](05-load-strategies.md) - Strategy configuration
-- [Troubleshooting](06-troubleshooting.md) - Debugging guide
+- [Lakebase Control Database](02-lakebase-control-database.md)
+- [Dagster Orchestration](03-dagster-orchestration.md)
+- [DataLoader Class](04-dataloader-class.md)
+- [Load Strategies](05-load-strategies.md)
+- [Troubleshooting](06-troubleshooting.md)
+- [Control Manager UI](07-control-manager-ui.md)
+- [Common Tasks](08-common-tasks.md)
+- [Architecture Diagrams](../diagrams/02-architecture.md)
+- [Sequence Diagrams](../diagrams/03-sequence-diagrams.md)

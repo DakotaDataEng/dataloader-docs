@@ -754,10 +754,9 @@ Open questions for the team, not documented behavior. Each is a disagreement bet
 `dbx-data@dev` and the SQL in the same repo.
 
 - **`staging_model_processed` has no DDL.** `dagsters/utils/lakebase_client.py` reads it
-  (`get_new_landing_tables`) and writes it (`mark_staging_model_processed`), and `README.md`
-  describes a landing table monitor built on them, but nothing in the repo adds the column and no
-  sensor in `dagsters/sensors/` calls either method. Was the column added to both databases by
-  hand, or is this dead code? The same question covers `historical_metadata.databricks_job_id` and
+  (`get_new_landing_tables`) and writes it (`mark_staging_model_processed`), but nothing in the
+  repo adds the column and no sensor in `dagsters/sensors/` calls either method. Was the column
+  added to both databases by hand, or is this dead code? The same question covers `historical_metadata.databricks_job_id` and
   `databricks_run_id`: `update_metadata` and `insert_metadata` write them, no migration creates
   them.
 - **`sql/01_create_tables.sql` declares `last_status_date_time TIMESTAMP` twice** in

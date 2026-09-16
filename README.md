@@ -38,14 +38,15 @@ S3 Iceberg    ─┘                               work              to 12 table
                     (Databricks App)
 ```
 
-Three things surprise people who knew the older design:
+Worth knowing up front:
 
-1. **One run loads up to twelve tables**, not one. The sensor groups the tables that are due by
-   source database. Outcomes are recorded per table as each finishes.
-2. **dl-app is not a local dev tool.** It is a deployed Databricks App and it is how the system is
-   operated.
-3. **A row that failed will not run again on its own.** The view the sensor reads only re-qualifies
-   a row whose last status is `Succeeded` or NULL.
+1. **A run is not a table.** Loads are batched. The sensor groups the tables that are due by source
+   database, and one run loads up to twelve of them. Outcomes are recorded per table as each
+   finishes.
+2. **dl-app is the system's front door.** It is a deployed Databricks App and it is how the system
+   is operated.
+3. **A failed row waits for a reset.** The view the sensor reads re-qualifies a row only when its
+   last status is `Succeeded` or NULL.
 
 ---
 

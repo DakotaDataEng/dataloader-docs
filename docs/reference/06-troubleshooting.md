@@ -93,7 +93,7 @@ outside the asset body. Tables in the same batch that had already finished keep 
 
 ### Finding the rest of a batch
 
-Run tags no longer carry `config_id` or `control_key`; a run owns many rows. The tags are
+Run tags do not carry `config_id` or `control_key`; a run owns many rows. The tags are
 `db_config_key`, `table_count` and `tables` (source names, truncated to 200 characters). The
 authoritative list is `tables` in the run config, under the op's `config`.
 
@@ -185,9 +185,9 @@ Cause, in the order worth checking:
 4. The code location is down. The Dagster UI shows the location in error and the sensor cannot
    evaluate.
 
-There is no sensor called `landing_table_monitor`. Older documentation invented it. The two client
-methods it supposedly used, `get_new_landing_tables` and `mark_staging_model_processed`, are still
-in the codebase and nothing calls them.
+Those eight are the whole list. If you are looking for a sensor that generates staging models,
+there isn't one: `get_new_landing_tables` and `mark_staging_model_processed` are still in
+`lakebase_client.py`, but nothing calls them.
 
 ---
 
@@ -507,7 +507,7 @@ WHERE destination_table_name ~ '[^A-Za-z0-9_]';
 
 Symptom: a table sits at `Failed` and `dataloader_failed_monitor` never picks it up.
 
-Two causes, and the second one surprises people.
+Two causes.
 
 The message carries the review marker. `mark_for_review` prepends `[AI Analysis - Requires Review]`
 to `last_status_message` and leaves the status at `Failed`. The monitor's own query excludes those

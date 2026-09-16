@@ -35,17 +35,15 @@ Every sensor and asset name carries the environment as a suffix, `_dev` or `_pro
 
 ---
 
-## Loads are batched, not one run per table
+## Loads are batched
 
-This is the most important thing to know about the current system, and the thing most likely to
-surprise anyone who knew the old design.
+A run carries a batch of tables, not a single table. The sensor groups the tables that are due, and
+each run builds one `DataLoader` that loads up to twelve of them on twelve threads.
 
-**Before**: one ready table produced one `RunRequest`, one Dagster run, one Databricks job and one
-`DataLoader` instance. A busy tick asked for dozens of concurrent runs. With `max_concurrent_runs:
-64` on an 8 core driver, that meant up to 64 driver processes competing for one machine.
-
-**Now**: the sensor groups the tables that are due and starts one run per group. One run builds one
-`DataLoader` and loads up to twelve tables on twelve threads inside it.
+Batching is what keeps the Dagster host stable. With `max_concurrent_runs: 64` on an 8 core driver,
+one run per table meant a busy tick could ask for dozens of concurrent runs and put up to 64 driver
+processes on one machine. Grouping the work puts the concurrency inside a run, where it is threads
+against one JDBC connection pool rather than processes against one host.
 
 ### What a tick does
 
@@ -116,8 +114,8 @@ so a value that moved between the sensor tick and the job starting is still corr
 ### Run tags
 
 `db_config_key`, `table_count`, and `tables` (source names, joined and truncated to 200
-characters). The old `config_id` and `control_key` tags are gone, because a run no longer belongs
-to one table. Anything needing the table list reads `config.tables` from the run config.
+characters). There is no `config_id` or `control_key` tag, because a run covers many tables.
+Anything needing the table list reads `config.tables` from the run config.
 
 ---
 
@@ -132,8 +130,8 @@ table as they land.
    and runs `process_tables` on a worker thread.
 3. The main thread polls every 15 seconds. Each poll asks which tables the loader has finished with
    and nothing has recorded yet. For each one it writes `Succeeded` or `Failed` with the message,
-   and closes that table's `historical_metadata` row straight away. A slow table no longer holds
-   the other eleven at `In Progress`.
+   and closes that table's `historical_metadata` row straight away, so a slow table does not hold
+   the rest of its batch at `In Progress`.
 4. After the worker joins, every table with no result is resolved. Failure wins over success if a
    table appears in both lists, and **silence counts as failure**: "The loader returned no result
    for this table. It was part of a batch that finished, so it was neither loaded nor reported as
@@ -182,9 +180,9 @@ running.
 | `dataloader_run_failed` | run status | event | Running | Fail non-terminal rows of a failed run |
 | `ingestion_logs_schedule` | schedule | hourly | Running | Merge blob event logs into `admin.ingestion_logs` |
 
-> The sensor called `landing_table_monitor` in older documentation does not exist. Two client
-> methods it used, `get_new_landing_tables` and `mark_staging_model_processed`, are still in the
-> codebase but nothing calls them.
+> `lakebase_client.py` still carries two methods for generating staging models,
+> `get_new_landing_tables` and `mark_staging_model_processed`. No sensor calls either one. See
+> [Known gaps](02-lakebase-control-database.md#known-gaps).
 
 ### longqueued_monitor
 

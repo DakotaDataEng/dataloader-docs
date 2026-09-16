@@ -50,19 +50,19 @@ is a row, not a deployment.
 
 ---
 
-## The three things that surprise people
+## Worth knowing up front
 
-**One run loads up to twelve tables.** Loads are batched. The sensor groups the tables that are due
-by source database, and one run loads them on parallel threads. A run is not a table. Outcomes are
-recorded per table as each finishes, so one bad table does not fail the other eleven.
+**A run is not a table.** Loads are batched: the sensor groups the tables that are due by source
+database, and one run loads up to twelve of them on parallel threads. Outcomes are recorded per
+table as each finishes, so one bad table does not fail the rest of its batch.
 
-**A failed row never runs again on its own.** The view the sensor reads only re-qualifies a row
-whose last status is `Succeeded` or NULL. A row sitting at `Failed` waits for a reset, however many
-times its cron fires.
+**A failed row waits for a reset.** The view the sensor reads re-qualifies a row only when its last
+status is `Succeeded` or NULL. A row sitting at `Failed` will not run again however many times its
+cron fires.
 
-**dl-app is the system's front door**, not a developer convenience. It is a deployed Databricks App.
-Configuring databases and tables, watching loads, crawling a source catalog, promoting to production
-and managing secrets all happen there.
+**dl-app is the system's front door.** It is a deployed Databricks App. Configuring databases and
+tables, watching loads, crawling a source catalog, promoting to production and managing secrets all
+happen there.
 
 ---
 

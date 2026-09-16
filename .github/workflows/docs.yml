@@ -27,7 +27,7 @@ jobs:
           cache: pip
 
       - name: Install
-        run: pip install mkdocs-material==9.7.7 mkdocs-glightbox==0.4.0
+        run: pip install -r requirements.txt
 
       # --strict fails the build on a broken internal link or a page missing from nav,
       # so a pull request cannot merge documentation that does not resolve.

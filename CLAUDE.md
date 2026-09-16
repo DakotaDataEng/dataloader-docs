@@ -46,9 +46,12 @@ if it is gone, the settings above are enough to rebuild it.
 Published to GitHub Pages at <https://dakotadataeng.github.io/dataloader-docs/>.
 
 ```bash
-uv run --with mkdocs-material --with mkdocs-glightbox mkdocs serve   # preview at :8000
-uv run --with mkdocs-material --with mkdocs-glightbox mkdocs build --strict
+pip install -r requirements.txt
+mkdocs serve            # preview at :8000
+mkdocs build --strict   # what the workflow runs
 ```
+
+Versions are pinned in `requirements.txt` so the local site matches the published one.
 
 `--strict` turns a broken internal link into a failed build, and the workflow runs it on every pull
 request. If you add a page, add it to `nav` in `mkdocs.yml`.

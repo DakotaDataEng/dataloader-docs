@@ -1,0 +1,7 @@
+# Pinned so the site the workflow builds is the site you get locally.
+#   pip install -r requirements.txt
+#   mkdocs serve
+mkdocs==1.6.1
+mkdocs-material==9.7.7
+mkdocs-glightbox==0.5.2
+pymdown-extensions==12.0.1

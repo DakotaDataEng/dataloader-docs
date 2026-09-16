@@ -33,7 +33,22 @@ if it is gone, the settings above are enough to rebuild it.
 
 | Path | Holds |
 |---|---|
-| `README.md` | Entry point and navigation by audience |
-| `diagrams/` | System overview SVG and mermaid architecture and sequence diagrams |
-| `reference/` | One file per subject, numbered in reading order |
-| `reference/images/` | Screenshots referenced by `07-control-manager-ui.md` |
+| `README.md` | Repo landing page, points at the published site |
+| `mkdocs.yml` | Site config and navigation. Material for MkDocs |
+| `docs/index.md` | Site home, written for someone who has never seen DataLoader |
+| `docs/reference/` | One file per subject, numbered in reading order |
+| `docs/reference/images/` | Screenshots referenced by `07-control-manager-ui.md` |
+| `docs/diagrams/` | Overview SVG, its generator, and the mermaid diagrams |
+| `.github/workflows/docs.yml` | Builds with `--strict` on every PR, publishes from `main` |
+
+## The site
+
+Published to GitHub Pages at <https://dakotadataeng.github.io/dataloader-docs/>.
+
+```bash
+uv run --with mkdocs-material --with mkdocs-glightbox mkdocs serve   # preview at :8000
+uv run --with mkdocs-material --with mkdocs-glightbox mkdocs build --strict
+```
+
+`--strict` turns a broken internal link into a failed build, and the workflow runs it on every pull
+request. If you add a page, add it to `nav` in `mkdocs.yml`.

@@ -1,5 +1,7 @@
 # DataLoader Documentation
 
+**Read it as a site: <https://dakotadataeng.github.io/dataloader-docs/>**
+
 DataLoader moves data from source databases into the Databricks Unity Catalog bronze layer. What
 loads, how, and on what schedule is configuration in a Postgres database, not code. Adding a table
 is a row, not a deployment.
@@ -10,12 +12,12 @@ is a row, not a deployment.
 
 | If you are | Read |
 |---|---|
-| New to the system | [System Overview](reference/01-system-overview.md) |
-| Running it day to day | [Common Tasks](reference/08-common-tasks.md) |
-| Fixing something broken | [Troubleshooting](reference/06-troubleshooting.md) |
-| Using the web app | [Control Manager UI](reference/07-control-manager-ui.md) |
-| Reviewing the design | [Architecture Diagrams](diagrams/02-architecture.md) |
-| Changing the loader | [DataLoader Class](reference/04-dataloader-class.md) |
+| New to the system | [System Overview](docs/reference/01-system-overview.md) |
+| Running it day to day | [Common Tasks](docs/reference/08-common-tasks.md) |
+| Fixing something broken | [Troubleshooting](docs/reference/06-troubleshooting.md) |
+| Using the web app | [Control Manager UI](docs/reference/07-control-manager-ui.md) |
+| Reviewing the design | [Architecture Diagrams](docs/diagrams/02-architecture.md) |
+| Changing the loader | [DataLoader Class](docs/reference/04-dataloader-class.md) |
 
 ---
 
@@ -51,22 +53,22 @@ Three things surprise people who knew the older design:
 
 | File | Covers |
 |---|---|
-| [01-system-overview.md](reference/01-system-overview.md) | What it is, key concepts, end to end flow |
-| [02-lakebase-control-database.md](reference/02-lakebase-control-database.md) | Every control table, the view the sensor reads, diagnostic queries |
-| [03-dagster-orchestration.md](reference/03-dagster-orchestration.md) | Batching, all eight sensors, assets, failure attribution |
-| [04-dataloader-class.md](reference/04-dataloader-class.md) | The loader and the modules around it |
-| [05-load-strategies.md](reference/05-load-strategies.md) | The six strategies, cursors, deletes, backfills |
-| [06-troubleshooting.md](reference/06-troubleshooting.md) | Symptoms, causes, queries |
-| [07-control-manager-ui.md](reference/07-control-manager-ui.md) | The web app, screen by screen |
-| [08-common-tasks.md](reference/08-common-tasks.md) | Recipes: add tables, reload, backfill, promote |
+| [01-system-overview.md](docs/reference/01-system-overview.md) | What it is, key concepts, end to end flow |
+| [02-lakebase-control-database.md](docs/reference/02-lakebase-control-database.md) | Every control table, the view the sensor reads, diagnostic queries |
+| [03-dagster-orchestration.md](docs/reference/03-dagster-orchestration.md) | Batching, all eight sensors, assets, failure attribution |
+| [04-dataloader-class.md](docs/reference/04-dataloader-class.md) | The loader and the modules around it |
+| [05-load-strategies.md](docs/reference/05-load-strategies.md) | The six strategies, cursors, deletes, backfills |
+| [06-troubleshooting.md](docs/reference/06-troubleshooting.md) | Symptoms, causes, queries |
+| [07-control-manager-ui.md](docs/reference/07-control-manager-ui.md) | The web app, screen by screen |
+| [08-common-tasks.md](docs/reference/08-common-tasks.md) | Recipes: add tables, reload, backfill, promote |
 
 ## Diagrams
 
 | File | Covers |
 |---|---|
-| [01-system-overview.svg](diagrams/01-system-overview.svg) | One page visual of the whole system |
-| [02-architecture.md](diagrams/02-architecture.md) | Components, data flow, sensors, state machines |
-| [03-sequence-diagrams.md](diagrams/03-sequence-diagrams.md) | Batch load, batch failure, incremental, backfill, timeouts |
+| [01-system-overview.svg](docs/diagrams/01-system-overview.svg) | One page visual of the whole system |
+| [02-architecture.md](docs/diagrams/02-architecture.md) | Components, data flow, sensors, state machines |
+| [03-sequence-diagrams.md](docs/diagrams/03-sequence-diagrams.md) | Batch load, batch failure, incremental, backfill, timeouts |
 
 ---
 

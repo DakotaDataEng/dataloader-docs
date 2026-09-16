@@ -1,0 +1,112 @@
+site_name: DataLoader
+site_description: How DataLoader moves data from source databases into Databricks Unity Catalog
+site_url: https://dakotadataeng.github.io/dataloader-docs/
+repo_url: https://github.com/DakotaDataEng/dataloader-docs
+repo_name: DakotaDataEng/dataloader-docs
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: _site
+
+exclude_docs: |
+  diagrams/make-overview-svg.py
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js
+  - javascripts/mermaid-init.js
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        # class is mermaid-diagram, not mermaid, so Material's own loader (which requests a
+        # mermaid path that 404s) leaves these alone. See docs/javascripts/mermaid-init.js
+        - name: mermaid
+          class: mermaid-diagram
+          format: !!python/name:pymdownx.superfences.fence_div_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      zoomable: true
+      draggable: true
+
+nav:
+  - Home: index.md
+  - Start here:
+      - What DataLoader is: reference/01-system-overview.md
+      - Common tasks: reference/08-common-tasks.md
+      - Using the app: reference/07-control-manager-ui.md
+  - Reference:
+      - Load strategies: reference/05-load-strategies.md
+      - Control database: reference/02-lakebase-control-database.md
+      - Orchestration: reference/03-dagster-orchestration.md
+      - The loader: reference/04-dataloader-class.md
+  - Operations:
+      - Troubleshooting: reference/06-troubleshooting.md
+  - Diagrams:
+      - Architecture: diagrams/02-architecture.md
+      - Sequences: diagrams/03-sequence-diagrams.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DakotaDataEng
+      name: Dakota Data Engineering
+  generator: false

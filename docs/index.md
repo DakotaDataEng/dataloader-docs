@@ -107,8 +107,3 @@ Worth knowing before reading anything else.
 | [The loader](reference/04-dataloader-class.md) | The DataLoader class and the modules around it |
 | [Architecture diagrams](diagrams/02-architecture.md) | Components, data flow, state machines |
 | [Sequence diagrams](diagrams/03-sequence-diagrams.md) | Batch load, batch failure, incremental, backfill, timeouts |
-
----
-
-Every claim on this site is checked against the `AnteroDataLakehouse` repository on its `dev`
-branch. When the code and these pages disagree, the pages are wrong. Please fix them.

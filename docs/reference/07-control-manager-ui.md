@@ -135,6 +135,8 @@ Every table for one database.
 - Search by name, destination or strategy, plus a strategy filter.
 - Checkboxes with **select all matching** across pages, then Activate, Deactivate or Delete.
 - Three toggles per row: Active, Full load, Mark deletes. The status pill opens the error.
+- A table whose last key comparison found rows missing is marked with the count, so drift is
+  visible from the list without opening anything.
 - Row menu: Runs and health, Edit, Change history, Reset, Clone, Delete.
 
 ### Source catalog
@@ -169,6 +171,7 @@ What the controls do:
 |---|---|
 | Full Load Override | One-time forced reload; resets itself after the load succeeds |
 | Mark Deletes + mode | Soft flags the row and keeps it, hard removes it. Needs a primary key |
+| Check for Missed Rows | Compares source and destination keys and reports rows no incremental run can see. Needs a primary key, and is separate from Mark Deletes: neither switch turns on the other. The hint beside it says what the check costs, which is nothing when Mark Deletes is already on, and says when it is unavailable because the table uses a custom SQL query |
 | Dev Full Load | Bypasses the 1000 row dev catalog limit |
 | Lookback hours | Hours re-read below the cursor. Blank uses the loader default of 12 |
 | Cron | Shown and edited in display timezone, stored as UTC, with a live description |
@@ -176,6 +179,16 @@ What the controls do:
 
 The right rail shows current state, run links, and actions: Reset status, Activate, Clone, Delete,
 and a collapsed block for setting the status by hand while testing.
+
+Two rail lines report whether the destination still matches the source:
+
+| Line | Reads | Says |
+|---|---|---|
+| Row counts | Recorded after every load, both sides from metadata | `in step` with the row total, or both numbers and the percentage apart. Marked `(estimate)` where the engine only estimates its row count |
+| Source vs destination | The key comparison, when Mark Deletes or Check for Missed Rows is on | `in step`, or how many source rows have no row in the destination, with when it last ran |
+
+Counts see net drift only, so the two lines can disagree: equal counts with rows missing means as
+many rows were dropped as were missed. The key comparison is the one that proves anything.
 
 **Suggest columns** reads the source's columns, keys and indexes, and grades each one for use as an
 incremental cursor and as a partition column, with the reason spelled out.

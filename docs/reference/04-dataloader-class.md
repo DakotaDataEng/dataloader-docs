@@ -391,10 +391,23 @@ tables share the executors instead of queueing behind the first big merge.
 
 ---
 
-## Deletes
+## Deletes and drift
 
-`mark_deletes` runs after the write when the row sets `is_delete`. It anti-joins destination keys
-against source keys to find rows that are gone.
+`compare_source_keys` runs after the write when the row sets `is_delete`, `drift_check`, or both.
+It reads every source primary key once and answers two questions from the same frames.
+
+**Rows gone from the source**, when `is_delete` is on. Destination keys anti-joined against source
+keys.
+
+**Rows the destination never got**, when `drift_check` is on. The same join the other way round.
+These are rows whose incremental column never moved above the cursor, so no window will ever read
+them and no lookback reaches them. They are counted into `drift_missing_rows` and never loaded:
+the repair is a full reload, which is a decision rather than something a health check makes.
+
+The second answer is close to free on a table that already reconciles deletes, because reading the
+source keys is the expensive half and both frames are already cached. `drift_check` on its own
+pays for that read, which is why it is off by default and the edit form says which case a table
+is in.
 
 - `soft`, the default: set `is_delete = true` and `deleted_at = current_timestamp()`, keep the
   row. `deleted_at` is not overwritten on later runs, so it works as an effective date. A row
@@ -410,8 +423,46 @@ still holds rows, the whole reconciliation is skipped with a warning: a failed o
 query would otherwise flag or delete the entire table. An unrecognised `delete_mode` resolves to
 `soft` and logs that it did.
 
-The reconciliation does not run on every load. `DATALOADER_DELETE_CHECK_HOURS`, 24 by default,
-decides how often, stamped on the control row as `deletes_checked_at`. Set it to 0 for every run.
+The pass does not run on every load. `DATALOADER_DELETE_CHECK_HOURS`, 24 by default, decides how
+often, stamped on the control row as `deletes_checked_at`. Set it to 0 for every run. When only
+`drift_check` is on, `DATALOADER_DRIFT_CHECK_HOURS` and `drift_checked_at` do the same job. When
+both are on, deletes set the pace: the drift answer rides along with them, so there is nothing to
+gain from reading the keys again in between.
+
+A table with `drift_check` on and `is_delete` off is never flagged, so it is not asked for the
+`is_delete` column it does not have.
+
+The two settings are independent. One read of the source keys serves both, but each answer is only
+computed when its own flag is set.
+
+The source key read is `SELECT <primary keys> FROM <source schema>.<source table>`, not the table's
+custom query. That makes the missing-row answer meaningless on a table loaded by a custom query,
+since every filtered-out row would be reported missing, so that half is skipped there and logged.
+Deletes are unaffected: the destination is a subset of the source in that case.
+
+### Row counts
+
+`count_rows_both_sides` runs after every windowed load and is the cheap tier. Delta answers
+`COUNT(*)` from the transaction log and the source count comes from the engine's catalog through
+`_source_row_estimate`, the same read that sizes backfill chunks. Neither side scans data.
+
+Counts see net drift only. Ten rows inserted without the watermark moving and ten rows deleted
+cancel out and the check stays quiet. That is why it is a tripwire for when to look, and the key
+comparison is what proves anything.
+
+Two details keep it honest:
+
+- Soft-deleted rows are subtracted from the Delta count. Without that, every table using soft
+  deletes would report permanent, growing drift. The flagged total comes from `drift_soft_deleted`,
+  counted for free by the key comparison.
+- The source number is not equally good on every engine. SQL Server, Snowflake and ClickHouse
+  maintain a true count. Oracle's `num_rows` is as fresh as the last stats gather and PostgreSQL's
+  `reltuples` as the last vacuum. `drift_source_exact` records which case applies and the UI marks
+  the estimates.
+
+Cheap is not free: two small Spark jobs, one JDBC round trip and one control row update on every
+run of a windowed table, including the runs that load nothing. `DATALOADER_DRIFT_COUNTS=off` turns
+it off.
 
 ---
 
@@ -563,7 +614,10 @@ not, and `error` when nothing was attempted at all.
 | `DATALOADER_SESSION_INIT_<DBTYPE>` | unset | Statement run on every new connection to that engine |
 | `DATALOADER_INCREMENTAL_LOOKBACK_HOURS` | 12 | Default lookback for incremental loads |
 | `DATALOADER_CURSOR_CAP_MARGIN_HOURS` | 1 | How far past the run start a cursor may go |
-| `DATALOADER_DELETE_CHECK_HOURS` | 24 | How often `mark_deletes` reconciles, 0 means every run |
+| `DATALOADER_DELETE_CHECK_HOURS` | 24 | How often the key comparison reconciles deletes, 0 means every run |
+| `DATALOADER_DRIFT_CHECK_HOURS` | 24 | How often the key comparison runs for drift alone, 0 means every run |
+| `DATALOADER_DRIFT_TOLERANCE_PCT` | 1 | How far the two row counts may be apart before the table is called out |
+| `DATALOADER_DRIFT_COUNTS` | `on` | `off` skips the row count step |
 | `DATALOADER_ROWS_PER_CHUNK` | | Target rows per backfill chunk in key mode |
 | `DATALOADER_BACKFILL_CURSOR_MARGIN_HOURS` | | Margin on the cursor handed over at the end of a backfill |
 | `DATALOADER_CHUNK_JDBC_PARTITIONS` | two per core, 8 to 64 | JDBC connections per backfill chunk |

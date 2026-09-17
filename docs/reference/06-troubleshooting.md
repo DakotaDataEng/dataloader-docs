@@ -368,9 +368,28 @@ Cause: the incremental column is a business date, not a change column. A well's 
 invoice's due date, an effective date. It was set when the row was created and does not move when
 somebody edits the row, so the edit sits below the cursor forever and is never read again.
 
-This fails silently. Nothing errors, nothing is logged, the counts just run low.
+Nothing errors and the load reports success every time, so this has to be caught by comparison
+rather than by a failure. Two things do that, and both write to the control row:
 
-Check with Suggest columns on the table. It grades each candidate and names this case directly: a
+```sql
+SELECT source_table_name, incremental_column,
+       drift_missing_rows, drift_checked_at,
+       drift_source_count, drift_dest_count, drift_soft_deleted, drift_source_exact
+FROM control.table_control
+WHERE drift_missing_rows > 0
+   OR (drift_source_count IS NOT NULL
+       AND abs(drift_source_count - (drift_dest_count - coalesce(drift_soft_deleted, 0)))
+           > drift_source_count * 0.01)
+ORDER BY drift_missing_rows DESC NULLS LAST;
+```
+
+`drift_missing_rows` is the exact answer: source rows with no matching key in the destination. It
+is filled in for any table with Mark Deletes on, and for any table with **Check for Missed Rows**
+on. The count columns are the cheap tripwire, recorded after every load, and they see net drift
+only. On Oracle and PostgreSQL treat a small count gap as noise: `drift_source_exact` is false
+there because the engine only estimates.
+
+Check the cursor itself with Suggest columns on the table. It grades each candidate and names this case directly: a
 business date scores below an unnamed column so it is never picked by default.
 
 | Grade | Meaning |
@@ -382,7 +401,8 @@ business date scores below an unnamed column so it is never picked by default.
 
 Fix: change `incremental_column` to a real change column, then force one full reload so the rows
 missed while the wrong cursor was in use are recovered. Changing the cursor alone does not go back
-for them.
+for them, which is also why `drift_missing_rows` is only ever reported and never loaded
+automatically.
 
 A cursor that has simply stopped is a different problem with the same query:
 

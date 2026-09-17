@@ -20,7 +20,7 @@ table_control          <---  status writes               <---  per-table outcome
 historical_metadata    <---  one row per table
 ```
 
-Dagster runs on the `linux-dagster` VM, not Dagster Cloud. Run concurrency is set in `dagster.yaml`:
+Dagster is self-hosted. Run concurrency is set in `dagster.yaml`:
 `QueuedRunCoordinator` with `max_concurrent_runs: 64` and 8 sensor threads.
 
 | Piece | Count | Where |
@@ -94,7 +94,7 @@ sent once.
 
 ```json
 {
-  "db_config_key": "aries",
+  "db_config_key": "EnertiaProd",
   "db_type": "mssql",
   "db_config_value": { "host": "...", "port": "...", "service_name": "...", "user": "...", "password": "..." },
   "db_kv_scope": "azure-keyvault",

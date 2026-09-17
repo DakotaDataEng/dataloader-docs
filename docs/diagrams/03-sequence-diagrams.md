@@ -1,7 +1,7 @@
 # Sequence Diagrams
 
 Step by step sequences for the operations that need the detail. Checked against
-`dbx-data@dev`.
+the current code.
 
 ---
 

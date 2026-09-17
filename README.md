@@ -97,5 +97,5 @@ configuration to production, and manage Key Vault secrets.
 
 ## Conventions
 
-See [CLAUDE.md](CLAUDE.md). The short version: every claim here is checked against
-`AnteroDataLakehouse@dev`, and when the code and the docs disagree, the docs are wrong.
+See [CLAUDE.md](CLAUDE.md). The short version: every claim here is checked against the code, and
+when the two disagree, the docs are wrong.

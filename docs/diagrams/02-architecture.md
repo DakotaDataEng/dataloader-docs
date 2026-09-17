@@ -1,6 +1,6 @@
 # Architecture Diagrams
 
-Mermaid diagrams of the DataLoader system. Checked against `dbx-data@dev`.
+Mermaid diagrams of the DataLoader system, checked against the current code.
 
 ---
 

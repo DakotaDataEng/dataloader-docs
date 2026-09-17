@@ -482,7 +482,7 @@ one run and complete on the next.
 
 Two separate problems with one root.
 
-Source side. A table called `New Well Upload` reached the JDBC reader unquoted and SQL Server
+Source side. A table called `Well Header Sample` reached the JDBC reader unquoted and SQL Server
 stopped parsing at `Upload`. The loader now quotes any identifier its engine cannot take bare:
 square brackets for SQL Server, backticks for MySQL and ClickHouse, double quotes elsewhere. Plain
 identifiers are deliberately left unquoted, because quoting makes Oracle and PostgreSQL names

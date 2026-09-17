@@ -206,8 +206,8 @@ whose writers must never wait on the loader.
 
 ## identifiers.py
 
-A source table called `New Well Upload` reached the JDBC reader as
-`AppBasinOSO.New Well Upload`, and SQL Server parsed it as far as `Upload`. Quoting fixes that,
+A source table called `Well Header Sample` reached the JDBC reader as
+`dbo.Well Header Sample`, and SQL Server parsed it as far as `Header`. Quoting fixes that,
 but quoting everything breaks more than it fixes: quoted names are case-sensitive in Oracle and
 PostgreSQL, and existing configs rely on the engine folding case for them. So the rule is
 conservative. A name matching `^[A-Za-z_][A-Za-z0-9_$#@]*$` is passed through exactly as it is.
@@ -224,7 +224,7 @@ Only a name the engine cannot parse bare gets quoted.
 
 Destination names are a separate rule. Unity Catalog and Delta take letters, digits and
 `_` in a table name and nothing else, so `safe_destination_name` folds every run of anything
-else into a single `_`: `New Well Upload` becomes `New_Well_Upload`. dl-app calls
+else into a single `_`: `Well Header Sample` becomes `Well_Header_Sample`. dl-app calls
 `is_safe_destination_name` when a config is saved and refuses a bad name with the folded version
 as the suggestion, which is cheaper than failing at the first write.
 

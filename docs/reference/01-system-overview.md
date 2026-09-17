@@ -87,7 +87,7 @@ between them with the TEST and PROD buttons in the header.
 
 ### 2. Dagster, the orchestrator
 
-Self-hosted on the `linux-dagster` VM. Eight sensors, one schedule, four assets.
+Self-hosted. Eight sensors, one schedule, four assets.
 
 | Sensor | Interval | Purpose |
 |---|---|---|

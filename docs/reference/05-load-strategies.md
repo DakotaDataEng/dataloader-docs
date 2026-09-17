@@ -2,7 +2,7 @@
 
 DataLoader supports 6 load strategies. This page describes what each one reads from the source,
 what it writes to the destination, and what it records in the control row, as the code on
-`dbx-data@dev` does it today.
+the loader does it today.
 
 ---
 

@@ -1,14 +1,14 @@
 # dataloader-docs conventions
 
-Documentation for the DataLoader system. The code it describes lives in the Azure DevOps repo
-`AnteroDataLakehouse` (local path `Antero/dbx-data`, branch `dev`). Nothing here is generated;
-every page is written and checked against the code by hand.
+Documentation for the DataLoader system. Nothing here is generated; every page is written and
+checked against the source by hand. `DakotaDataEng/dataloader-v1` runs the same app, loader and
+schema, so it is the reference to check against.
 
 ## Rules
 
 - **Check claims against code.** Every number, column name, sensor name and default in these docs
-  is a fact about `dbx-data@dev`. Cite nothing you have not read. When code and docs disagree, the
-  code wins and the doc gets fixed.
+  is a fact about the code. Cite nothing you have not read. When code and docs disagree, the code
+  wins and the doc gets fixed.
 - **No em dashes or en dashes.** Use commas, colons, parentheses or a second sentence.
 - **Short, plain sentences.** State the fact and move on. No filler openers, no reader
   hand-holding, none of the vocabulary that reads as machine-written.

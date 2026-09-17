@@ -3,20 +3,20 @@
 The web app for running DataLoader. Configure source databases and tables, watch loads, crawl a
 source's catalog, promote configuration to production, and manage the secrets behind it.
 
-> Screenshots come from the Dakota demo instance, which runs the same app against its own Lakebase
-> and cluster. Table and database names differ from production; the screens do not.
+> Screenshots are captured from a live instance by `scripts/docshots.py`. The source databases and
+> tables in them are examples.
 
 ---
 
 ## How it runs
 
-The app runs as a Databricks App, deployed by ADO pipeline 22 from the workspace repo.
+The app runs as a Databricks App, deployed from the workspace repo by the app deploy pipeline.
 
 | | |
 |---|---|
 | URL | The `dl-app` Databricks App in each workspace. Get the current address from the Databricks Apps list |
 | Server | gunicorn, 4 workers |
-| Deployed by | `databricks apps deploy dl-app` from `/Workspace/Repos/dev/AnteroDataLakehouse/dl-app` |
+| Deployed by | `databricks apps deploy dl-app` from the workspace repo checkout |
 | Secrets | App resources bound to the Key Vault backed scope, referenced by `valueFrom` in `app.yaml` |
 | Identity | The `X-Forwarded-Email` header set by the Databricks proxy |
 | Databases | Two Lakebase pools, test by default, prod created on demand by the header switch |

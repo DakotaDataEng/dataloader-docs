@@ -19,7 +19,7 @@ Lakebase is the PostgreSQL control database that drives the DataLoader orchestra
 
 `sql/01_create_tables.sql`, `02_create_indexes.sql` and `03_create_views.sql` are the original
 baseline. Everything since is a dbmate migration in `db/migrations`, applied by the **Lakebase
-Migrations** Azure DevOps pipeline with `dbmate up --strict`: against `dataloader_test` on a merge
+Migrations** pipeline with `dbmate up --strict`: against `dataloader_test` on a merge
 to `dev`, against `dataloader` on a merge to `prod`. Nobody applies SQL by hand. Applied versions
 are recorded in `control.schema_migrations` (see `db/README.md`).
 
@@ -232,7 +232,7 @@ table on a 15 minute cron does that 96 times a day; set 1 or 2 there.
 | `Failed` | Last load failed (check `last_status_message`) |
 
 **Destination table names** are folded to `[A-Za-z0-9_]`. Unity Catalog accepts nothing else, and a
-name such as `new well upload` passed every check in the app and then failed at the loader's first
+name such as `well header sample` passed every check in the app and then failed at the loader's first
 write. `dl-app` now rejects unsafe names on save (`is_safe_destination_name` in
 `dl-app/utils/catalog_defaults.py`) and generates safe ones when creating configs from the source
 catalog. `20260916010000_safe_destination_names.sql` folded the rows already stored. No Delta table
@@ -751,7 +751,7 @@ Deleting a database config deletes every table config pointing at it. `historica
 ## Known gaps
 
 Open questions for the team, not documented behavior. Each is a disagreement between the code in
-`dbx-data@dev` and the SQL in the same repo.
+the application code and the SQL in the same repository.
 
 - **`staging_model_processed` has no DDL.** `dagsters/utils/lakebase_client.py` reads it
   (`get_new_landing_tables`) and writes it (`mark_staging_model_processed`), but nothing in the

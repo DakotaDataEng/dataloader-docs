@@ -117,7 +117,7 @@ sequenceDiagram
     participant STG as stage table
     participant DEST as Destination
 
-    DL->>LB: Read incremental_value, lookback hours,<br/>deletes_checked_at
+    DL->>LB: Read incremental_value, lookback hours,<br/>deletes_checked_at, drift_check
     Note over DL: Window starts at cursor minus lookback<br/>(default 12h, 0 for append_only)
     DL->>DL: Stamp run start in the source's clock
 
@@ -142,13 +142,20 @@ sequenceDiagram
         DL->>STG: Drop stage
     end
 
-    opt is_delete and the last check is older than 24h
+    opt Windowed strategy
+        DL->>DEST: COUNT(*) from the transaction log
+        DL->>SRC: Row count from the engine's catalog
+        DL->>LB: Record drift_source_count, drift_dest_count
+    end
+
+    opt is_delete or drift_check, and the last check is older than 24h
         DL->>SRC: Read the source's primary keys
         alt Source returned no keys but the destination has rows
             Note over DL: Skip. Never treat an empty read<br/>as a full-table delete
         else
             DL->>DEST: Soft: flag is_delete and deleted_at<br/>Hard: remove the row
             DL->>LB: Stamp deletes_checked_at
+            DL->>LB: Record drift_missing_rows<br/>(source keys with no row in the destination)
         end
     end
 ```

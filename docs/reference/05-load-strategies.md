@@ -655,6 +655,52 @@ is numeric, and over one connection otherwise.
 
 ---
 
+## Drift: rows the cursor never saw
+
+Every windowed strategy finds rows by watermark. A row written or edited without its incremental
+column moving sits below the cursor forever. Lookback does not reach it either: lookback is a
+window measured in time, and that row's timestamp is simply wrong, not late.
+
+Nothing in the load can detect this. The query returns what the predicate asks for and succeeds.
+Only comparing the destination against the source finds the gap, and there are two ways to do it
+at very different prices.
+
+| Check | What it reads | Finds | When it runs |
+|---|---|---|---|
+| Row counts | Delta transaction log, source catalog | Net difference in row counts | Every windowed load |
+| Key comparison | Every source primary key | Exactly which rows are missing | Daily, with `is_delete` or `drift_check` |
+
+**Row counts** are the tripwire. Neither side scans data, so this runs every load and costs two
+small Spark jobs and a round trip. It sees net drift only: ten rows inserted without the watermark
+moving and ten rows deleted cancel out and it stays quiet. Equal counts are not proof.
+
+Soft-deleted rows are subtracted from the destination count, or a table using soft deletes would
+report drift that grows forever. And how much the source number is worth depends on the engine:
+SQL Server, Snowflake and ClickHouse maintain a true count, while Oracle reports its last stats
+gather and PostgreSQL its last vacuum. Those are marked as estimates rather than treated as
+agreement.
+
+**The key comparison** is the proof. It is the same pass that reconciles deletes, run in the other
+direction: source keys with no match in the destination. On a table that already has `is_delete`
+on, that answer is nearly free, because reading the source keys is the expensive half and the
+frames are already in memory. `drift_check` turns it on for tables without delete tracking, where
+that read has to be paid for.
+
+Missing rows are counted into `drift_missing_rows` and never loaded. Recovering them means a full
+reload, which is a decision someone makes, not something a health check does on its own.
+
+`is_delete` and `drift_check` are separate switches over one read. Turning on delete tracking does
+not start reporting missing rows, and turning on the drift check does not start reconciling
+deletes. A table loaded by a custom query cannot answer the missing-row question at all, because
+the key read covers the whole source table rather than the query, so that half is skipped.
+
+**The real fix is upstream.** Detection is a backstop. A cursor the application cannot forget to
+update removes the problem instead of reporting it: a SQL Server `rowversion` is maintained by the
+engine, and Oracle's `ORA_ROWSCN` moves on any change to the row's block, which over-reports rather
+than under-reports and so errs safely. Suggest columns already ranks these first.
+
+---
+
 ## Forced Full Reload (`load_full`)
 
 `load_full` on the control row forces one whole-source reload. It is a batch-level setting: the

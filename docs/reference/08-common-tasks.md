@@ -204,6 +204,40 @@ require a rebuild.
 
 ---
 
+## Check a table has not fallen behind
+
+Row counts are compared after every load with nothing to turn on. The edit rail shows them as
+**Row counts**: in step, or both numbers and how far apart. They see net drift only, so equal
+numbers are not proof.
+
+For the exact answer, set **Check for Missed Rows** on the table. It compares every source primary
+key with the destination's and reports rows that no incremental run can see, because their
+incremental column never moved above the cursor. The rail shows the result as **Source vs
+destination** and the table list marks the table when rows are missing.
+
+It needs a primary key, and what it costs depends on the table:
+
+| Mark Deletes | Cost of the drift check |
+|---|---|
+| On | Free. Those keys are already being read, this is one more join over them |
+| Off | A full read of the source primary keys, on its own daily schedule |
+
+The form says which case you are in when you tick the box.
+
+**Mark Deletes does not turn this on.** The two answers come from one read of the source keys,
+but each is only produced when its own setting asks for it. Mark Deletes finds rows that vanished
+from the source. Check for Missed Rows finds rows that never arrived. Tick both if you want both.
+
+**It is not available on a table loaded by a custom SQL query.** The key read covers the whole
+source table, so every row the query filters out would be reported as missing. The form says so
+and the loader skips that half.
+
+Nothing is loaded automatically. Missing rows are reported, and the repair is a Force Full Reload
+once you have fixed whatever let them through, usually a cursor pointing at a business date. Fixing
+the cursor alone does not go back for the rows already missed.
+
+---
+
 ## Speed up a slow incremental table
 
 In rough order of payoff:

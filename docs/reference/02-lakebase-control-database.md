@@ -153,6 +153,16 @@ CREATE TABLE control.table_control (
     delete_mode VARCHAR(10) DEFAULT 'soft' NOT NULL,
     deletes_checked_at TIMESTAMP WITH TIME ZONE,
 
+    -- Drift detection
+    drift_check BOOLEAN NOT NULL DEFAULT false,
+    drift_checked_at TIMESTAMP WITH TIME ZONE,
+    drift_missing_rows BIGINT,
+    drift_source_count BIGINT,
+    drift_dest_count BIGINT,
+    drift_soft_deleted BIGINT,
+    drift_source_exact BOOLEAN,
+    drift_counted_at TIMESTAMP WITH TIME ZONE,
+
     -- Partitioning configuration
     num_partitions INTEGER,
     partition_column TEXT,
@@ -179,7 +189,9 @@ CREATE TABLE control.table_control (
     UNIQUE (source_table_catalog, source_table_schema, source_table_name, load_cron),
     CONSTRAINT table_control_delete_mode_check CHECK (delete_mode IN ('soft', 'hard')),
     CONSTRAINT table_control_lookback_hours_check
-        CHECK (incremental_lookback_hours IS NULL OR incremental_lookback_hours >= 0)
+        CHECK (incremental_lookback_hours IS NULL OR incremental_lookback_hours >= 0),
+    CONSTRAINT table_control_drift_missing_rows_check
+        CHECK (drift_missing_rows IS NULL OR drift_missing_rows >= 0)
 );
 ```
 
@@ -199,7 +211,15 @@ CREATE TABLE control.table_control (
 | `dev_full_load` | BOOLEAN | Bypasses the dev row limit for this table |
 | `is_delete` | BOOLEAN | Run `mark_deletes` after each load |
 | `delete_mode` | VARCHAR(10) | `soft` flags `is_delete`/`deleted_at` in the destination, `hard` removes the row. Ignored unless `is_delete` is true |
-| `deletes_checked_at` | TIMESTAMPTZ | When `mark_deletes` last reconciled this table. The loader waits `DATALOADER_DELETE_CHECK_HOURS` (24) before doing it again |
+| `deletes_checked_at` | TIMESTAMPTZ | When the key comparison last ran. The loader waits `DATALOADER_DELETE_CHECK_HOURS` (24) before doing it again |
+| `drift_check` | BOOLEAN | Compare source and destination keys to find rows the watermark never saw. Free when `is_delete` is on, because those keys are already read |
+| `drift_checked_at` | TIMESTAMPTZ | When the key comparison last ran for drift. Paced by `DATALOADER_DRIFT_CHECK_HOURS` (24) when deletes are off |
+| `drift_missing_rows` | BIGINT | Source rows with no matching key in the destination at the last comparison. Reported, never loaded |
+| `drift_source_count` | BIGINT | Rows the source engine's catalog reported at the last count |
+| `drift_dest_count` | BIGINT | Rows in the destination Delta table, soft-deleted ones included |
+| `drift_soft_deleted` | BIGINT | Destination rows flagged `is_delete`, counted by the key comparison and subtracted from `drift_dest_count` |
+| `drift_source_exact` | BOOLEAN | Whether the source engine maintains its row count or only estimates it |
+| `drift_counted_at` | TIMESTAMPTZ | When the row counts were last recorded. Written after every windowed load |
 | `next_load_date_time` | TIMESTAMP | When the sensor should trigger the next load |
 
 `load_full` was VARCHAR until `db/migrations/20260908230000_load_full_boolean.sql` made it
@@ -219,6 +239,7 @@ table on a 15 minute cron does that 96 times a day; set 1 or 2 there.
 | `UNIQUE (source_table_catalog, source_table_schema, source_table_name, load_cron)` | One config per source table per schedule | The same table may be loaded on two schedules, never twice on one |
 | `table_control_delete_mode_check` | `delete_mode IN ('soft', 'hard')` | The app normalizes anything unknown to `soft`, never to `hard` |
 | `table_control_lookback_hours_check` | `incremental_lookback_hours IS NULL OR >= 0` | NULL means "use the loader default" |
+| `table_control_drift_missing_rows_check` | `drift_missing_rows IS NULL OR >= 0` | NULL means no comparison has run |
 | `fk_table_control_dbconfig` | FK to `table_control_dbconfig` | `ON DELETE CASCADE ON UPDATE CASCADE` |
 
 **Status Values**:
@@ -507,8 +528,8 @@ Columns, in order: `config_id`, `control_key` (hex encoded), `source_catalog`,
 `is_delete`, `delete_mode`, `last_status`, `next_load_date_time`, `last_modified_at`.
 
 The join to `table_control_dbconfig` is an INNER JOIN, so a table whose `db_config_key` is null or
-missing never appears. `incremental_value`, `backfill_cursor`, `incremental_lookback_hours` and
-`deletes_checked_at` are deliberately absent: the loader reads those from `table_control` itself at
+missing never appears. `incremental_value`, `backfill_cursor`, `incremental_lookback_hours`,
+`deletes_checked_at` and the `drift_*` columns are deliberately absent: the loader reads those from `table_control` itself at
 run time.
 
 ```sql

@@ -46,7 +46,7 @@ Present on every page.
 
 | Control | Behavior |
 |---|---|
-| Nav | Dataloader (home), Operations, Runs, Trends, Audit History, Key Vault |
+| Nav | Dataloader (home), Operations, Runs, Batches, Trends, Audit History, Key Vault |
 | Find a table, or **Ctrl+K** | Quick open. Enter opens the table's runs and health hub, Shift+Enter opens its configuration |
 | Theme toggle | Light and dark, remembered per browser |
 | TEST / PROD | Switches which Lakebase database the app reads and writes |
@@ -63,7 +63,8 @@ The landing page. Every source database, how it is doing, and what runs next.
 ![Databases](images/dataloader-dashboard.png)
 
 Counters across the top are clickable and lead to the matching status view: Active, Succeeded,
-Failed, In progress, Queued, Overdue, Inactive.
+Failed, In progress, Queued, Overdue, Rows missing, Inactive. Rows missing counts the tables whose
+last key comparison found source rows with no row in the destination.
 
 Each card carries the database type, a health bar, table counts, when it last loaded, what is due
 next, and the week's success rate. Buttons: **Open tables**, **Runs**, and a row menu with Edit
@@ -85,7 +86,9 @@ last window finish, what runs next, and is anything late.
 - **Health strip**: running, queued, overdue, failing now, runs in the window, failures in the
   window, success rate, rows loaded.
 - **Needs attention**: tables that are stuck, overdue past a whole interval, on a failing streak,
-  slow, silent, or never loaded. Computed from 30 days of runs. Each row has Reset and Edit.
+  failed, slow, silent, never loaded, or missing source rows at the last key comparison. Computed
+  from 30 days of runs. Each row carries the actions that fit it: the last run, Reset, Edit, or
+  History. Rows missing never turns a status red, because every load still succeeds.
 - **Next N hours** as a timeline or a week heatmap. Bar length is the table's usual duration.
 - **Last N hours**: longest runs, most rows, failures.
 - **Freshness** by database.
@@ -94,13 +97,69 @@ last window finish, what runs next, and is anything late.
 
 ## Runs
 
-Every run in a window, filterable and exportable.
+Every table load in a window, as a table, a timeline, or grouped into batches. The Table, Timeline
+and Batches switch keeps the filters.
 
 ![Runs explorer](images/dataloader-runs-explorer.png)
 
-Filters: window chips, explicit from and to dates, database, status, and free text across table,
-schema, database or run id. Columns sort. Rows link to the Dagster run. **Export CSV** carries the
-current filters.
+Filters: window chips (1h, 6h, 24h, 7d, 30d), explicit from and to dates, database, status, free
+text across table, schema, database or run id, and **Longer than**, which takes `90s`, `20m`,
+`1.5h` or a bare number of minutes. Columns sort, including Wait, the time a load sat queued before
+it started. Rows link to the Dagster run. **Export CSV** carries the current filters.
+
+Two rows of figures sit above the results. The first counts runs, successes, failures, loads in
+progress, success rate, rows loaded, and median and p95 duration. The second says how the window
+was spent:
+
+| Figure | Means |
+|---|---|
+| Wall clock | First start to last end |
+| Busy | Time with at least one load running |
+| Summed load time | Every load end to end, with the average concurrency it implies |
+| Peak concurrency | Most loads running at once, and when |
+
+### Timeline
+
+One bar per load on a wall clock, colored by outcome.
+
+![Runs timeline](images/dataloader-runs-timeline.png)
+
+The hatched segment before a bar is the time the load waited in the queue. The strip above the rows
+plots how many loads were running at once. Hover a bar for its table, outcome, start, wait, end,
+rows, database and run.
+
+- **Drag the axis to zoom.** The drag sets the from and to filters and reloads, so a zoomed view is
+  a link you can share and Back undoes it. **Zoom out** doubles the window around its middle. The
+  shortest window is a minute.
+- **Row order**: Time (oldest first), Duration (longest first, the direct answer to what is taking
+  all night), or Status (failed first, then still running). Bars keep their place on the clock; only
+  the stacking changes.
+- At most 1,000 loads are drawn. Past that the view says how many it left out; narrow the window or
+  filter by database.
+
+### Batches
+
+One row per Databricks job run, named by the tables it carried. Also in the nav.
+
+![Batches](images/dataloader-batches.png)
+
+The job is generic and the table list arrives as a run parameter, so the Databricks Runs list shows
+every run as Untitled and cannot say what was in it. Every load records the `databricks_run_id` it
+ran under, and this page groups on it.
+
+- **Tables in the batch** takes one table or a comma-separated list, and **Batch carried** picks
+  whether a batch must carry any of them or all of them. Type a table to find the run it travelled
+  in, along with everything else that rode with it.
+- **Outcome** is a roll-up of the tables, not the job's exit status. A batch with a failed table
+  reads Failed here while Databricks reports it as Succeeded, because the job completed. A bar shows
+  the split, with the failed tables named under it. Filter by any table failed, still running, or
+  all clean.
+- **What failed in this window** groups the failures by message and lists the tables each one hit.
+  Databricks groups them by error code, which is RunExecutionError for anything inside the job.
+- The table count links to that batch's loads in the Runs table. The Run column links to the
+  Databricks run and the Dagster run.
+- A load that never reached Databricks groups under its Dagster run instead, so nothing falls off
+  the page.
 
 ### Table hub
 
@@ -172,6 +231,7 @@ What the controls do:
 | Full Load Override | One-time forced reload; resets itself after the load succeeds |
 | Mark Deletes + mode | Soft flags the row and keeps it, hard removes it. Needs a primary key |
 | Check for Missed Rows | Compares source and destination keys and reports rows no incremental run can see. Needs a primary key, and is separate from Mark Deletes: neither switch turns on the other. The hint beside it says what the check costs, which is nothing when Mark Deletes is already on, and says when it is unavailable because the table uses a custom SQL query |
+| Load Missing Rows | Reads the missing rows back from the source by key and merges them, instead of only reporting them. Costs the share of rows missing, where a full reload costs the whole table. Off by default because it writes rows, and only available while Check for Missed Rows is on. Capped at 50,000 rows (`DATALOADER_DRIFT_REPAIR_MAX_ROWS`); past that the loader says a full reload is the better tool |
 | Dev Full Load | Bypasses the 1000 row dev catalog limit |
 | Lookback hours | Hours re-read below the cursor. Blank uses the loader default of 12 |
 | Cron | Shown and edited in display timezone, stored as UTC, with a live description |
@@ -180,12 +240,22 @@ What the controls do:
 The right rail shows current state, run links, and actions: Reset status, Activate, Clone, Delete,
 and a collapsed block for setting the status by hand while testing.
 
+**Usually takes** is the median of the last 30 days of successful runs. It uses only runs of the
+current strategy when there are at least three, because a table that backfilled and then went
+incremental has two unrelated sets of durations. Otherwise it uses every successful run and says
+so, and with fewer than three of those it shows nothing.
+
+While a load runs, the rail adds **Running for** and **Estimated left**. Once the run is past its
+usual duration the line becomes **Past the usual** and says by how much, since a median of
+five-minute runs cannot say how much longer an hour-long run will take.
+
 Two rail lines report whether the destination still matches the source:
 
 | Line | Reads | Says |
 |---|---|---|
 | Row counts | Recorded after every load, both sides from metadata | `in step` with the row total, or both numbers and the percentage apart. Marked `(estimate)` where the engine only estimates its row count |
 | Source vs destination | The key comparison, when Mark Deletes or Check for Missed Rows is on | `in step`, or how many source rows have no row in the destination, with when it last ran |
+| Rows loaded back | The last repair, when Load Missing Rows is on | How many rows were read back and merged, and when |
 
 Counts see net drift only, so the two lines can disagree: equal counts with rows missing means as
 many rows were dropped as were missed. The key comparison is the one that proves anything.

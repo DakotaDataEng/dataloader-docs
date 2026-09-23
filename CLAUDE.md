@@ -24,10 +24,22 @@ schema, so it is the reference to check against.
 (`DakotaDataEng/dataloader-v1`), which runs the same `dl-app` code against its own Lakebase and
 cluster. Demo data is Dakota's own, so nothing is redacted.
 
-They are captured by a script, not by hand: run the app locally against `dataloader_test`, drive
-it with Playwright in headless Edge, light theme, 1500px wide. Recapture a page after any UI
-change rather than editing the image. The capture script lives with the session that produced it;
-if it is gone, the settings above are enough to rebuild it.
+They are captured by `scripts/docshots.py` in `dataloader-v1`, not by hand: it runs the app
+locally against `dataloader_test` and drives it with Playwright in headless Edge, light theme,
+1500px wide. Recapture a page after any UI change rather than editing the image.
+
+The demo's synthetic history ages from the moment it was seeded, so re-seed first or the shots show
+every table overdue:
+
+```bash
+cd ../dataloader-v1
+uv run python scripts/seed_realistic.py && uv run python scripts/seed_realistic.py --prod
+uv run --with playwright python scripts/docshots.py                    # every shot, into this repo
+uv run --with playwright python scripts/docshots.py runs-timeline batches   # just these
+```
+
+`preview-rows` and `suggest-columns` run on the dataloader cluster and take minutes from cold. Name
+the others to skip them.
 
 ## Layout
 

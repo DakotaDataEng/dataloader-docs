@@ -10,6 +10,8 @@ is a row, not a deployment.
 
 ## Start here
 
+For documentation changes, follow the [maintainer and coding-agent guide](AGENTS.md). It covers checking the installed version, capturing screenshots and publishing the site.
+
 The [packaged installation and operator guide](docs/reference/packaged-loader.md) covers Dakota's wheel, its default Databricks Jobs scheduler, and the optional Dagster adapter. The system picture and component descriptions below document the earlier Dagster installation.
 
 | If you are | Read |

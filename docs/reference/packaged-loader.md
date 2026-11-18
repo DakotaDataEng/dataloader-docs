@@ -8,7 +8,7 @@ Dakota installs the software, connects the sources, and trains your team. Once a
 |---|---|---|
 | Who starts a scheduled load? | The orchestrator job reads due control rows and submits a batch to the worker job. | The master sensor reads due control rows. A Dagster asset launches the batch on Databricks using Pipes. |
 | Where does the load execute? | A classic Databricks cluster runs the installed wheel and writes Delta tables. | A classic Databricks cluster runs the same loader. |
-| Where does the operator look? | Open **Runs** in the control app. Follow the Databricks run link when you need worker details. | Start in **Runs**. The app also exposes the Dagster asset, lineage and dbt pages. |
+| Where does the operator look? | Open **Runs** in the control app. Follow the Databricks run link when you need worker details. | Start in **Runs** for loads. Use the [Assets walkthrough](07-control-manager-ui.md#assets-in-dagster-mode) for model health, lineage, sensors and dbt builds. |
 
 ![Default Databricks Jobs and optional Dagster share the loader, control database and scheduling policy](../diagrams/packaged-orchestration.svg)
 

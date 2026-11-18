@@ -3,8 +3,8 @@
 The web app for running DataLoader. Configure source databases and tables, watch loads, crawl a
 source's catalog, promote configuration to production, and manage the secrets behind it.
 
-> Screenshots are captured from a live instance by `scripts/docshots.py`. The source databases and
-> tables in them are examples.
+> Screenshots show the running app with example data. The Assets screens show the packaged app
+> in Dagster mode with synthetic asset health and build history.
 
 ---
 
@@ -46,7 +46,7 @@ Present on every page.
 
 | Control | Behavior |
 |---|---|
-| Nav | Dataloader (home), Operations, Runs, Batches, Trends, Audit History, Key Vault |
+| Nav | Dataloader (home), Operations, Runs, Batches, Trends, Error rules, Audit History, Key Vault and Settings. In Dagster mode, Assets appears beside Operations. |
 | Find a table, or **Ctrl+K** | Quick open. Enter opens the table's runs and health hub, Shift+Enter opens its configuration |
 | Theme toggle | Light and dark, remembered per browser |
 | TEST / PROD | Switches which Lakebase database the app reads and writes |
@@ -307,6 +307,61 @@ Removing an existing row takes effect when you confirm **Remove Row**.
 
 ---
 
+## Assets in Dagster mode
+
+Open **Assets** in the main navigation when Dagster schedules your loads. This is where you can
+follow a source table into downstream dbt models and see why a model is waiting. Bronze table
+status comes from the loader. Model health, checks and sensor status depend on Dagster publishing
+to the selected environment's control database. Check the publication age before acting on a stale status.
+
+### Assets and asset detail
+
+Start with **Needs attention** to investigate a problem, or choose **All** to browse healthy assets
+too. Search by table, model or description and narrow the list by layer, domain or source.
+
+![Assets list with example bronze tables and dbt models in the All view](images/dataloader-packaged-assets.png)
+
+Select an asset's name to see its detail. **Reads** lists its inputs and **Read by** lists its
+consumers. Use **Checks** for the result of a data test. A bronze table also shows its loader
+configuration. Choose **Lineage** to follow dependencies across several levels.
+
+![Asset detail showing the dependencies of an example sales model](images/dataloader-packaged-asset-detail.png)
+
+### Lineage
+
+Open **Assets → Lineage** for the whole project. Enter an asset name and choose **Focus** to trace
+its upstream inputs and downstream consumers. Adjust **Upstream** and **Downstream** to control
+how many levels you see. A dashed connection can pass through a catalog hidden by the filter.
+
+![Project lineage connecting example sales tables and dbt models](images/dataloader-packaged-lineage.png)
+
+### Sensors and schedules
+
+Open **Assets → Sensors and schedules** if loads or builds have stopped arriving. Compare the last
+tick with the expected interval and read the last result. The **Stops if it stops** column tells
+you which work depends on that sensor or schedule.
+
+![Dagster sensors and schedules showing status, expected intervals and last ticks](images/dataloader-packaged-platform.png)
+
+### dbt builds
+
+Open **Assets → dbt builds** and select a day. **Repeat builds** shows which models ran more than
+once. Use it to investigate repeated work before changing a schedule.
+
+![Repeat builds for two models in a synthetic day of dbt activity](images/dataloader-packaged-dbt-repeats.png)
+
+Switch to **Timeline** to see when each build ran and which models were on the critical path.
+Use **Failures** to investigate failed builds. **Warehouse time** shows compute consumed by
+warehouse tasks over the selected window. Parallel tasks can sum to more than the elapsed time.
+
+![dbt build timeline showing the order and duration of example model builds](images/dataloader-packaged-dbt-timeline.png)
+
+![dbt Failures view showing a model with a synthetic failure](images/dataloader-packaged-dbt-failures.png)
+
+![Warehouse time view showing synthetic task time for dbt models](images/dataloader-packaged-dbt-warehouse.png)
+
+---
+
 ## Status views
 
 One status at a time, across every database.
@@ -372,6 +427,40 @@ demand, **Edit** to write a new version, and **Promote** to copy it to the prod 
 name. **New secret** offers a connection bundle template per database type.
 
 Values are only ever fetched when you ask for one. The list itself carries names and metadata only.
+
+---
+
+## Error rules
+
+Use **Error rules** to decide how the retry analysis handles recurring load failures. Check the
+**TEST** or **PROD** badge before changing a rule.
+
+![Error rules and the form for adding a message match](images/dataloader-packaged-error-rules.png)
+
+- Under **Needs review**, check AI-suggested rules. Those rules take effect when saved by the
+  retry analysis. **Looks right** marks a rule reviewed, and **Change** lets you set a decision.
+- Under **Errors without a rule**, use **Add rule** to match a specific kind of failure. Under
+  **Your rules**, enter a case-insensitive message fragment to match several related failures.
+  A rule for one kind of failure takes priority over a text match. Among matching fragments, the
+  longest wins.
+- For a retry, you can set a delay and a limit. When the limit is reached, the table is left for
+  review. Use **Promote to prod** to compare TEST and PROD rules and select which to copy.
+
+---
+
+## Settings
+
+Use **Settings** to set the global run timeouts for the selected **TEST** or **PROD** environment.
+
+![Global batch and long run timeout settings](images/dataloader-packaged-settings.png)
+
+**Batch run timeout** applies to ordinary loads. **Long run timeout** applies to chunked backfills,
+chunked reloads and other loads the scheduler classifies as long. The standard defaults are 3 and
+24 hours, respectively. Enter a whole number from 1 to 72 and select **Save**.
+
+A table's own timeout takes priority. An ordinary load otherwise uses its database timeout if one
+is set. A long load can use the database timeout when it exceeds the global long-run value. The
+scheduler reads saved settings on its next tick.
 
 ---
 

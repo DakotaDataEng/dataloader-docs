@@ -27,6 +27,8 @@ The installer applies the database migrations, configures the app's session key 
 3. Open the promotion view and compare the test configuration with production. Review the selected rows, including any deletions. Use **Promote Selected** only when the production change has been approved.
 4. Practice diagnosing a synthetic failure. Save the run link, table, error and timestamp. A credentials or permission error goes to the person who owns that access. Verify the cause is fixed before resetting the table.
 
+To change several table configurations together, open the [bulk editor](07-control-manager-ui.md#bulk-edit). During training, paste a value into two inactive test rows, save, and find both changes in the audit history.
+
 If the orchestrator reports that submission was unconfirmed or that it could not save a run link, inspect the worker's Databricks runs for that time and batch before resetting anything. A worker may have accepted the load. Compare its result with the table history and destination before requesting a replay.
 
 For upgrade and control-database recovery, use the deployment guide and database README delivered with the installed version. The installer should rehearse restoring a backup to a separate database and compare cursor values with the destination before restarting schedules.

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dk-dg" viewBox="0 0 1240 500" width="1240" height="500" role="img" aria-label="Orchestration modes: the control tables, the DataLoader and dl-app are the same in both modes. Databricks jobs schedule and monitor loads by default; an optional Dagster adapter can do that instead and adds asset status.">
+<title>Orchestration modes</title>
+<style>
+.dk-dg { font-family: Inter, "Segoe UI", Arial, sans-serif; color: #4f5f7b; }
+.dk-dg .dk-dg-bg { fill: #f9f9ff; }
+.dk-dg .dk-dg-node { fill: #f0f3ff; }
+.dk-dg .dk-dg-group { fill: #e9edf8; }
+.dk-dg .dk-dg-inner { fill: #ffffff; }
+.dk-dg .dk-dg-subject { fill: #ffffff; stroke: #f16823; stroke-width: 2; }
+.dk-dg .dk-dg-boundary { fill: none; stroke: #7e8ca2; stroke-width: 1.4; stroke-dasharray: 6 5; }
+.dk-dg .dk-dg-optional { fill: #f0f3ff; fill-opacity: 0.5; stroke: #7e8ca2; stroke-width: 1.2; stroke-dasharray: 5 4; }
+.dk-dg .dk-dg-chip { fill: #e9edf8; }
+.dk-dg .dk-dg-pill { fill: #d6e3ff; }
+.dk-dg .dk-dg-edge { fill: none; stroke: currentColor; stroke-width: 1.4; }
+.dk-dg .dk-dg-edge.is-dashed { stroke-dasharray: 5 4; }
+.dk-dg .dk-dg-arrowhead { fill: currentColor; }
+.dk-dg .dk-dg-name { fill: #091c35; font-weight: 600; font-size: 13px; }
+.dk-dg .dk-dg-subject-name { fill: #091c35; font-family: Manrope, "Segoe UI", Arial, sans-serif; font-weight: 700; font-size: 17px; }
+.dk-dg .dk-dg-desc { fill: #3a4a63; font-size: 11.5px; }
+.dk-dg .dk-dg-value { fill: #091c35; font-weight: 600; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.dk-dg .dk-dg-label { fill: #091c35; font-size: 11px; }
+.dk-dg .dk-dg-meta { fill: #3a4a63; font-size: 11.5px; }
+.dk-dg .dk-dg-chip-text { fill: #091c35; font-size: 11px; font-weight: 500; }
+.dk-dg .dk-dg-pill-text { fill: #091c35; font-size: 11.5px; font-weight: 500; }
+</style>
+<defs><marker id="dk-dg-arrowhead" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path class="dk-dg-arrowhead" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+<rect class="dk-dg-bg" x="0" y="0" width="1240" height="500"/>
+<g data-node="jobs"><rect class="dk-dg-group" x="24" y="32" width="632" height="136" rx="8"/><text class="dk-dg-name" x="340.0" y="56" text-anchor="middle" data-node="jobs">Databricks jobs (default)</text></g>
+<text class="dk-dg-meta" x="24" y="188" text-anchor="start" data-free="1">Runs in the Databricks workspace</text>
+<g data-boundary="dag"><rect class="dk-dg-boundary" x="688" y="32" width="528" height="136" rx="10"/><text class="dk-dg-name" x="704" y="54" data-boundary-text="dag">Dagster adapter (optional)</text></g>
+<g data-node="same"><rect class="dk-dg-group" x="24" y="292" width="1192" height="184" rx="8"/><text class="dk-dg-name" x="620.0" y="316" text-anchor="middle" data-node="same">Same in both modes</text></g>
+<g data-node="orch"><rect class="dk-dg-inner" x="48" y="72" width="160" height="80" rx="6"/><text class="dk-dg-name" x="60" y="107" text-anchor="start" data-node="orch">Orchestrator job</text><text class="dk-dg-desc" x="60" y="125" text-anchor="start" data-node="orch">reads the due view</text></g>
+<g data-node="worker"><rect class="dk-dg-inner" x="296" y="72" width="160" height="80" rx="6"/><text class="dk-dg-name" x="308" y="107" text-anchor="start" data-node="worker">Worker job</text><text class="dk-dg-desc" x="308" y="125" text-anchor="start" data-node="worker">runs the DataLoader</text></g>
+<g data-node="retry"><rect class="dk-dg-inner" x="480" y="72" width="160" height="80" rx="6"/><text class="dk-dg-name" x="492" y="107" text-anchor="start" data-node="retry">Retry, monitor jobs</text><text class="dk-dg-desc" x="492" y="125" text-anchor="start" data-node="retry">retry failed, end stuck</text></g>
+<g data-node="sens"><rect class="dk-dg-optional" x="720" y="72" width="180" height="80" rx="6"/><text class="dk-dg-name" x="810.0" y="107" text-anchor="middle" data-node="sens">Dagster sensors</text><text class="dk-dg-desc" x="810.0" y="125" text-anchor="middle" data-node="sens">queue, retry, monitor</text></g>
+<g data-node="assets"><rect class="dk-dg-optional" x="1000" y="72" width="180" height="80" rx="6"/><text class="dk-dg-name" x="1090.0" y="107" text-anchor="middle" data-node="assets">Dagster assets</text><text class="dk-dg-desc" x="1090.0" y="125" text-anchor="middle" data-node="assets">load tables, build dbt</text></g>
+<g data-node="app"><rect class="dk-dg-inner" x="56" y="348" width="160" height="80" rx="6"/><text class="dk-dg-name" x="68" y="383" text-anchor="start" data-node="app">dl-app</text><text class="dk-dg-desc" x="68" y="401" text-anchor="start" data-node="app">Flask control app</text></g>
+<g data-node="ctl"><rect class="dk-dg-subject" x="328" y="340" width="320" height="96" rx="6"/><text class="dk-dg-subject-name" x="488.0" y="370" text-anchor="middle" data-node="ctl">Control tables</text><text class="dk-dg-desc" x="488.0" y="390" text-anchor="middle" data-node="ctl">Lakebase Postgres</text><rect class="dk-dg-chip" x="368.5" y="402" width="97" height="22" rx="11" data-node="ctl"/><text class="dk-dg-chip-text" x="417" y="417" text-anchor="middle" data-node="ctl">table_control</text><rect class="dk-dg-chip" x="473.5" y="402" width="134" height="22" rx="11" data-node="ctl"/><text class="dk-dg-chip-text" x="540.5" y="417" text-anchor="middle" data-node="ctl">historical_metadata</text></g>
+<g data-node="loader"><rect class="dk-dg-inner" x="760" y="348" width="160" height="80" rx="6"/><text class="dk-dg-name" x="772" y="383" text-anchor="start" data-node="loader">DataLoader</text><text class="dk-dg-desc" x="772" y="401" text-anchor="start" data-node="loader">PySpark on the cluster</text></g>
+<g data-node="uc"><rect class="dk-dg-inner" x="1032" y="348" width="160" height="80" rx="6"/><text class="dk-dg-name" x="1044" y="383" text-anchor="start" data-node="uc">Unity Catalog</text><text class="dk-dg-desc" x="1044" y="401" text-anchor="start" data-node="uc">Delta tables</text></g>
+<g data-pill="p1"><rect class="dk-dg-pill" x="56" y="440" width="252" height="24" rx="12"/><text class="dk-dg-pill-text" x="182.0" y="456" text-anchor="middle" data-pill-text="p1">Dagster mode adds asset, lineage and dbt pages</text></g>
+<g data-edge="a1"><path class="dk-dg-edge" d="M208 112 L296 112" marker-end="url(#dk-dg-arrowhead)"/><text class="dk-dg-label" x="252" y="104" text-anchor="middle" data-label-for="a1">starts a run</text></g>
+<g data-edge="a2"><path class="dk-dg-edge is-dashed" d="M900 112 L1000 112" marker-end="url(#dk-dg-arrowhead)"/><text class="dk-dg-label" x="950" y="104" text-anchor="middle" data-label-for="a2">launches</text></g>
+<g data-edge="b1"><path class="dk-dg-edge" d="M216 388 L328 388" marker-end="url(#dk-dg-arrowhead)"/><text class="dk-dg-label" x="272" y="380" text-anchor="middle" data-label-for="b1">marks tables due</text></g>
+<g data-edge="b2"><path class="dk-dg-edge" d="M760 388 L648 388" marker-end="url(#dk-dg-arrowhead)"/><text class="dk-dg-label" x="704" y="380" text-anchor="middle" data-label-for="b2">saves the cursor</text></g>
+<g data-edge="b3"><path class="dk-dg-edge" d="M920 388 L1032 388" marker-end="url(#dk-dg-arrowhead)"/><text class="dk-dg-label" x="976" y="380" text-anchor="middle" data-label-for="b3">writes Delta</text></g>
+<g data-edge="c1"><path class="dk-dg-edge" d="M340 168 L340 292" marker-end="url(#dk-dg-arrowhead)"/><text class="dk-dg-label" x="348" y="236" text-anchor="start" data-label-for="c1">reads due tables, runs the loader, writes status</text></g>
+<g data-edge="c2"><path class="dk-dg-edge is-dashed" d="M952 168 L952 292" marker-end="url(#dk-dg-arrowhead)"/><text class="dk-dg-label" x="944" y="236" text-anchor="end" data-label-for="c2">does the same and reports asset status</text></g>
+</svg>

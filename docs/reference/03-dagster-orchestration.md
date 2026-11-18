@@ -1,5 +1,7 @@
 # Dagster Orchestration
 
+This walkthrough describes the earlier Dagster deployment. The wheel also supports Databricks Jobs. For the supported modes and their defaults, see [Packaged installation and operation](packaged-loader.md).
+
 Dagster decides what loads and when. It reads the control database, groups the tables that are due
 into batches, and starts one Databricks run per batch.
 

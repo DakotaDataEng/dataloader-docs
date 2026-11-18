@@ -1,5 +1,7 @@
 # DataLoader Class
 
+This page follows the earlier source-tree layout. The wheel ships the loader under `dataloader.spark`. See [Packaged installation and operation](packaged-loader.md) for the current layout and scheduler choices.
+
 `DataLoader` is what runs on Databricks. One instance binds to one source database, then loads
 up to twelve tables on twelve threads. Everything it needs that does not require Spark lives in
 sibling modules under `dbx/functions/`, so it can be unit tested off a cluster.

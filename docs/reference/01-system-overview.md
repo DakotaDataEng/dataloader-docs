@@ -1,5 +1,7 @@
 # System Overview
 
+This page describes the earlier Dagster installation. For the wheel distribution and the two supported schedulers, see [Packaged installation and operation](packaged-loader.md).
+
 ## What is DataLoader?
 
 DataLoader moves data from source databases into the Databricks Unity Catalog bronze layer. What

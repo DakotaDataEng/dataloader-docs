@@ -1,5 +1,7 @@
 # Troubleshooting
 
+For a missing worker link in the Databricks Jobs scheduler, follow the [packaged operator guide](packaged-loader.md#operator-handoff) before resetting the load. The Dagster sensor diagnostics below apply to installations using that scheduler.
+
 Diagnosis when something is wrong: a table that never runs, a row stuck In Progress, a batch that
 died, a load that finished but loaded the wrong rows. Routine work lives in
 [Common Tasks](08-common-tasks.md).

@@ -1,7 +1,6 @@
 # Sequence Diagrams
 
-Step by step sequences for the operations that need the detail. Checked against
-the current code.
+These sequences follow the earlier Dagster installation. For the default Databricks Jobs scheduler, see [Packaged installation and operation](../reference/packaged-loader.md).
 
 ---
 

@@ -90,13 +90,14 @@ plugins:
 nav:
   - Home: index.md
   - Start here:
+      - Packaged installation and operation: reference/packaged-loader.md
       - What DataLoader is: reference/01-system-overview.md
       - Common tasks: reference/08-common-tasks.md
       - Using the app: reference/07-control-manager-ui.md
   - Reference:
       - Load strategies: reference/05-load-strategies.md
       - Control database: reference/02-lakebase-control-database.md
-      - Orchestration: reference/03-dagster-orchestration.md
+      - Dagster orchestration: reference/03-dagster-orchestration.md
       - The loader: reference/04-dataloader-class.md
   - Operations:
       - Troubleshooting: reference/06-troubleshooting.md

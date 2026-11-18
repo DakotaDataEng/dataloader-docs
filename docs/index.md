@@ -6,6 +6,8 @@ loads, how, and on what schedule is configuration in a Postgres database, not co
 is a row, not a deployment.
 </p>
 
+Dakota's packaged DataLoader uses Databricks Jobs by default and also supports Dagster. Start with the [packaged installation and operator guide](reference/packaged-loader.md) if Dakota installs the wheel in your workspace. The detailed Dagster walkthroughs on this site also cover earlier installations.
+
 <div class="grid cards" markdown>
 
 -   :material-book-open-variant: **New here**
@@ -46,17 +48,17 @@ is a row, not a deployment.
 
 </div>
 
-![DataLoader system overview](diagrams/01-system-overview.svg)
+![DataLoader orchestration modes](diagrams/packaged-orchestration.svg)
 
 ---
 
 ## How it behaves
 
-**A run is not a table.** Loads are batched: the sensor groups the tables that are due by source
-database, and one run loads up to twelve of them on parallel threads. Outcomes are recorded per
-table as each finishes, so one bad table does not fail the rest of its batch.
+**A run can load several tables.** The scheduler groups due tables by source database and load settings.
+In the wheel distribution, the default number of tables per run is 12 for Databricks Jobs and 24 for Dagster.
+The installer can configure it. Each table gets its own outcome in the run history.
 
-**A failed row waits for a reset.** The view the sensor reads re-qualifies a row only when its last
+**A failed row waits for a reset.** The view the scheduler reads re-qualifies a row only when its last
 status is `Succeeded` or NULL. A row sitting at `Failed` will not run again however many times its
 cron fires.
 
@@ -71,7 +73,7 @@ happen there.
 | Layer | What it is | What it does |
 |---|---|---|
 | Control | Lakebase, a Postgres database | Holds what to load, how, when, and what happened last time |
-| Orchestration | Dagster, self-hosted | Watches the control plane, batches the work, starts runs |
+| Orchestration | Databricks Jobs or Dagster | Reads due tables, groups them into batches and starts workers |
 | Execution | Databricks | Reads the source, writes Delta, reports each table's outcome |
 | Destination | Unity Catalog | The bronze layer |
 | Interface | dl-app | How people operate all of the above |
@@ -93,7 +95,7 @@ The terms the rest of the site uses.
 | **Crawl** | Caching a source database's tables, columns, keys and indexes so configs can be created in bulk |
 | **Change column** | A column whose name says it moves when a row is edited. The crawl ranks candidates for you |
 | **Promote** | Copying configuration from the test control database to production. Never moves data |
-| **Reset** | Clearing a table's status so the next sensor tick picks it up |
+| **Reset** | Clearing a table's status so the scheduler can pick it up again |
 
 ---
 

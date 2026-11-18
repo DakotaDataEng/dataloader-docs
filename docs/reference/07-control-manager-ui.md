@@ -289,17 +289,21 @@ current value on demand). **Test connection** proves it works before you save.
 
 ## Bulk edit
 
-A spreadsheet over the table configurations, for changes too tedious to make one form at a time.
-Paste from Excel, right-click for row actions, then Save all changes.
+Open **Bulk Edit** from a database's table list, or **Bulk Edit All** to work across connections.
+The packaged app uses RevoGrid. Click a heading to sort and use its filter button to narrow the rows.
 
-![Bulk edit](images/dataloader-bulk-edit.png)
+![Bulk editor showing source and destination tables for the SampleSource demo connection](images/dataloader-bulk-edit-packaged.png)
 
-Editable columns cover the whole configuration: source and destination identity, custom query,
-strategy, cron, the boolean flags including Mark deletes and delete mode, the incremental and
-rolling fields, all four partitioning fields, and primary key columns. Checkbox columns accept
-pasted text such as true/false, yes/no, 1/0, y/n.
+Double-click a cell to edit it. You can change the destination, query, strategy, schedule and load
+options. Choose the database and source table when adding a row. Those source fields are read-only
+on saved rows.
 
-Available per database, or across every database at once.
+Use **Ctrl+C** and **Ctrl+V** to copy and paste ranges. Pasting one value fills a selected range.
+Checkboxes accept values such as `yes` and `no`. Use **Ctrl+Z** to undo a paste before saving.
+
+Click **Save All Changes** to submit the rows you edited. A filter changes which rows you see.
+Edits you made before filtering are still pending. Check **Audit history** for the saved changes.
+Removing an existing row takes effect when you confirm **Remove Row**.
 
 ---
 

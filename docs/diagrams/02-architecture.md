@@ -1,6 +1,6 @@
 # Architecture Diagrams
 
-Mermaid diagrams of the DataLoader system, checked against the current code.
+These diagrams follow the earlier Dagster installation. The [packaged loader diagram](../reference/packaged-loader.md) shows both scheduling modes.
 
 ---
 
